@@ -1,0 +1,22 @@
+Time:2025-04-29 09:25:54.600 TTL start trigger
+Piezo-slit and Filters system power supply:ON
+Mercury4 power supply:ON
+Detector 1 ->  Power supply:ON   High voltage:ON
+Detector 2 ->  Power supply:ON   High voltage:ON
+Detector 3 ->  Power supply:ON   High voltage:ON
+X-ray source:OFF
+Channel 1 ->  F:0.00[V]/0.00[V]   SV:500.0[µm]/504.1[µm]   SH:500.0[µm]/502.5[µm]
+Channel 2 ->  F:0.00[V]/0.00[V]   SV:500.0[µm]/502.9[µm]   SH:500.0[µm]/502.6[µm]
+Channel 3 ->  F:0.00[V]/0.00[V]   SV:500.0[µm]/503.6[µm]   SH:500.0[µm]/502.6[µm]
+
+Time:2025-04-29 09:25:59.685 TTL stop trigger
+Piezo-slit and Filters system power supply:ON
+Mercury4 power supply:ON
+Detector 1 ->  Power supply:ON   High voltage:ON
+Detector 2 ->  Power supply:ON   High voltage:ON
+Detector 3 ->  Power supply:ON   High voltage:ON
+X-ray source:OFF
+Channel 1 ->  F:0.00[V]/0.00[V]   SV:500.0[µm]/504.0[µm]   SH:500.0[µm]/502.4[µm]
+Channel 2 ->  F:0.00[V]/0.00[V]   SV:500.0[µm]/502.9[µm]   SH:500.0[µm]/502.5[µm]
+Channel 3 ->  F:0.00[V]/0.00[V]   SV:500.0[µm]/503.7[µm]   SH:500.0[µm]/502.7[µm]
+

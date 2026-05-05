@@ -1,0 +1,3 @@
+Trigger_type    Local_PHA_time          UTC_Timestamp
+PHA_ON__trigger 2025-04-29 16:10:12.300 1745935812300000000
+PHA_OFF_trigger 2025-04-29 16:11:37.304 1745935897304000000
