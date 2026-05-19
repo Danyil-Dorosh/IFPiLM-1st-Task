@@ -14,10 +14,8 @@ B) Modifications for your answers (and our work together):
 7. I want codign to be more stage/separated.sliced. Like you then thrown just that big bag of code - and i had to spend several days to understand that- .I want zebys kazde zadanie/ nowa implementacje, co ci ja prosze - zebys wprowadzal ich "warstwowo" - czyli
 a) nie robic wsystki moje prosby na raz - tylk opo kolej jedna za jedna
 b) po wykonaniu (oraz w trakcie) implemetacji tluamczyc mi co robi ten kod, jak go napisales - lub jaki olution wmysliles
-Chce zebys mi tlumaczyl co piszesz - zebym nei musial tak z dupy tego robic sam
-
+8. Chce zebys mi tlumaczyl co piszesz - zebym nei musial tak z dupy tego robic sam
 W ogole był oby dobrze wytłumaczyc trochę, jak my diziałamy
-
 chyba bede tobie po kawalkom rzucal kazdy z rekwestow. nie wiem - czy jest liepiej rzucac wsyztko od razy - czy przepijac - i amemu testoac
 
 8. DO NOT test/run code. Write it to me - I will test it myself.

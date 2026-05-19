@@ -16,7 +16,7 @@ from pha_lib.timetrace import integrate_energy_window
 from pha_lib.discharges import detect_discharges
 from pha_lib.fit import fit_discharge
 
-INPUT = Path("/home/user/workspace/unitedc_62_239.txt")
+INPUT = Path("data\\test\\modified\\unitedc_62_239.txt")
 OUT = ROOT / "output"
 PLOTS = ROOT / "output" / "plots"
 

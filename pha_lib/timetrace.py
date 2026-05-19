@@ -1,16 +1,9 @@
-"""Budowa przebiegów czasowych z widm (TimeTrace).
+"""Budowa przebiegów czasowych z widm (TimeTrace) — osobno dla każdego kanału.
 
-Główna operacja: dla każdej ramki sumujemy counts w wybranym oknie energii
-[E_center - half_width, E_center + half_width]. Pozwala to przejść z reprezentacji
-frame×bin do prostej krzywej (frame -> N events) — czyli takiej formy, na której
-działa fitowanie eksponensa.
+y(t) = suma countów w oknie [E_line - half_width, E_line + half_width]
+       dla każdej ramki t.
 
-Dlaczego okno, a nie pojedynczy bin?
-------------------------------------
-- Linia emisyjna ma naturalną szerokość (Doppler, instrumental broadening,
-  detector resolution).
-- Center przesuwa się trochę na osi energii (kalibracja, drift).
-Stąd używamy okna ~50–100 eV wokół centrum linii (parametr `half_width_eV`).
+Każdy kanał obrabiany NIEZALEŻNIE. Nigdy nie mieszamy Events1 z Events2.
 """
 from __future__ import annotations
 import numpy as np
@@ -21,46 +14,49 @@ from .model import EnergyChannelData, TimeTrace
 def integrate_energy_window(
     channel: EnergyChannelData,
     center_eV: float,
-    half_width_eV: float = 50.0,
-    label: str = "",
+    half_width_eV: float = 60.0,
 ) -> TimeTrace:
-    """Zsumuj counts w oknie [center - half, center + half] dla każdej ramki.
+    """Zbuduj TimeTrace z widm 1 kanału — zwykła suma w oknie energii.
+
+    Dla każdej ramki sumujemy counts (Events) we wszystkich binach, których
+    energia E spełnia:
+        center_eV - half_width_eV  <=  E  <=  center_eV + half_width_eV
 
     Parameters
     ----------
     channel : EnergyChannelData
-        Dane z 1 kanału (n_frames × n_bins).
+        Dane z **jednego** kanału energetycznego (osobno!).
     center_eV : float
-        Środek okna energii (np. 6660 eV dla badanej linii).
-    half_width_eV : float, default 50
-        Pół-szerokość okna w eV. Wartość 50 eV daje zwykle dobry kompromis
-        między łapaniem całej linii a niewchodzeniem w sąsiednie linie/tło.
-    label : str
-        Etykieta opisowa, np. "Fe XXV @ 6660 eV".
+        Środek okna energii, np. 6660 eV dla linii Fe XXV.
+    half_width_eV : float, default 60
+        Pół-szerokość okna ±half_width_eV. Domyślne ±60 eV łapie linię Fe XXV
+        razem z poszerzeniem dopplerowskim i rozdzielczością detektora.
 
     Returns
     -------
     TimeTrace
-        Suma countów w oknie dla każdej ramki.
+        values[i] = liczba zdarzeń w oknie w ramce i (typ float).
     """
     if half_width_eV <= 0:
         raise ValueError("half_width_eV must be positive")
 
     e = channel.energy_eV
-    mask = (e >= center_eV - half_width_eV) & (e <= center_eV + half_width_eV)
+    window_lo = float(center_eV - half_width_eV)
+    window_hi = float(center_eV + half_width_eV)
+
+    mask = (e >= window_lo) & (e <= window_hi)
     if not mask.any():
         raise ValueError(
-            f"Energy window [{center_eV - half_width_eV}, "
-            f"{center_eV + half_width_eV}] eV is empty — check the energy axis."
+            f"Energy window [{window_lo}, {window_hi}] eV is empty "
+            f"(no bins fall inside)."
         )
 
-    # spectra shape (n_frames, n_bins) — sumujemy po ostatnim wymiarze
-    values = channel.spectra[:, mask].sum(axis=1)
+    # Suma countów po wybranych binach, dla każdej ramki osobno
+    values = channel.spectra[:, mask].sum(axis=1).astype(float)  # (n_frames,)
 
     return TimeTrace(
         frame_numbers=channel.frame_numbers.copy(),
-        values=values.astype(float),
-        energy_window_eV=(center_eV - half_width_eV, center_eV + half_width_eV),
+        values=values,
+        energy_window_eV=(window_lo, window_hi),
         channel_id=channel.channel_id,
-        label=label or f"window {center_eV} +/- {half_width_eV} eV",
     )
