@@ -1,6 +1,6 @@
-"""Detekcja discharges w przebiegu czasowym.
+"""Detekcja injekcji w przebiegu czasowym.
 
-Discharge w naszych danych = nagły skok liczby fotonów w oknie 6660 eV
+Injekcja w naszych danych = nagły skok liczby fotonów w wyznaczonym oknie eV
 (injekcja zanieczyszczenia), po czym sygnał wykładniczo zanika do tła.
 
 Algorytm (prosty i czytelny — można potem podmienić)
@@ -10,12 +10,12 @@ Algorytm (prosty i czytelny — można potem podmienić)
    wystrzałów).
 2. Estymujemy „skalę szumu" jako MAD (median absolute deviation) lub
    po prostu odchylenie standardowe okolic mediany.
-3. Discharge zaczyna się w pierwszej ramce, gdzie sygnał skacze o
+3. Injekcja zaczyna się w pierwszej ramce, gdzie sygnał skacze o
    `peak_threshold_factor * scale` powyżej tła ORAZ jest większy o co
    najmniej `min_jump` wartości od ramki poprzedniej.
-4. Discharge kończy się, gdy sygnał wraca do <= `end_threshold_factor*scale`
+4. Injekcja kończy się, gdy sygnał wraca do <= `end_threshold_factor*scale`
    powyżej tła i pozostaje tam co najmniej `min_quiet_frames` ramek.
-5. Łączymy / odrzucamy zbyt krótkie / zbyt blisko siebie discharges.
+5. Łączymy / odrzucamy zbyt krótkie / zbyt blisko siebie injekcje.
 
 Parametry są nastrajalne — domyślne dobrane dla naszego zbioru testowego.
 """
@@ -24,12 +24,12 @@ from dataclasses import dataclass
 from typing import List
 import numpy as np
 
-from .model import TimeTrace, Discharge
+from .model import TimeTrace, Injection
 
 
 @dataclass
-class DischargeDetectionConfig:
-    """Konfiguracja detekcji discharges."""
+class InjectionDetectionConfig:
+    """Konfiguracja detekcji injekcji."""
     peak_threshold_factor: float = 3.0
     """Ile razy szumu ponad tło, aby uznać że to peak (start discharge).
     Domyślnie 3 sigma — typowy próg detekcji w fizyce."""
@@ -61,19 +61,19 @@ def _robust_background_and_scale(values: np.ndarray) -> tuple[float, float]:
     return bg, scale
 
 
-def detect_discharges(
+def detect_injections(
     trace: TimeTrace,
     line_energy_eV: float,
-    config: DischargeDetectionConfig | None = None,
-) -> List[Discharge]:
-    """Znajdź discharges w przebiegu czasowym.
+    config: InjectionDetectionConfig | None = None,
+) -> List[Injection]:
+    """Znajdź injekcje w przebiegu czasowym.
 
     Returns
     -------
-    list of Discharge
+    list of Injection
         Posortowane po `start_frame`. Lista może być pusta.
     """
-    cfg = config or DischargeDetectionConfig()
+    cfg = config or InjectionDetectionConfig()
     v = trace.values
     fn = trace.frame_numbers
     if len(v) < 3:
@@ -86,12 +86,12 @@ def detect_discharges(
     above = v >= high_thr
 
     # Wykryj kandydaty na start: ramka above z odpowiednio dużym skokiem względem
-    # poprzedniej i niezbyt blisko poprzedniego discharge.
-    discharges: list[Discharge] = []
+    # poprzedniej i niezbyt blisko poprzedniej injekcji.
+    injections: list[Injection] = []
     i = 0
     n = len(v)
     last_finish_idx = -10**9
-    discharge_no = 0
+    injection_no = 0
 
     while i < n:
         if not above[i]:
@@ -126,9 +126,9 @@ def detect_discharges(
         # peak inside [start, finish]
         peak_idx = start_idx + int(np.argmax(v[start_idx:finish_idx + 1]))
 
-        discharge_no += 1
-        discharges.append(Discharge(
-            discharge_no=discharge_no,
+        injection_no += 1
+        injections.append(Injection(
+            injection_no=injection_no,
             channel_id=trace.channel_id,
             line_energy_eV=line_energy_eV,
             start_frame=int(fn[start_idx]),
@@ -138,4 +138,8 @@ def detect_discharges(
         last_finish_idx = finish_idx
         i = finish_idx + 1
 
-    return discharges
+    return injections
+
+
+detect_discharges = detect_injections
+DischargeDetectionConfig = InjectionDetectionConfig

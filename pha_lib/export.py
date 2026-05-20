@@ -20,7 +20,7 @@ def save_results_parquet(
     Parameters
     ----------
     df_by_channel : dict[int, pd.DataFrame]
-        Output z `pipeline.analyze_shot()`.
+        Output z `pipeline.analyze_discharge()`.
     out_dir : path
         Folder na wyniki (zostanie utworzony jeśli nie istnieje).
     prefix : str

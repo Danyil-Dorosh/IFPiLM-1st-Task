@@ -1,4 +1,4 @@
-"""I/O — czytanie wejściowych plików tekstowych do obiektu Shot.
+"""I/O — czytanie wejściowych plików tekstowych do obiektu Discharge.
 
 Obsługiwane formaty
 -------------------
@@ -14,7 +14,7 @@ Obsługiwane formaty
 3. **(planned) Binary .pha** — TODO, podpisuje API już teraz aby później
    tylko wstawić implementację.
 
-Każda funkcja zwraca obiekt `Shot` (model.Shot) — od tego momentu reszta
+Każda funkcja zwraca obiekt `Discharge` (model.Discharge) — od tego momentu reszta
 biblioteki nie wie, skąd przyszły dane.
 """
 from __future__ import annotations
@@ -23,7 +23,7 @@ from typing import Iterable, Optional
 import re
 import numpy as np
 
-from .model import Shot, EnergyChannelData
+from .model import Discharge, EnergyChannelData
 
 
 # Numery kanałów które obsługujemy w obecnej wersji (col-pairs E1/Ev1, E2/Ev2).
@@ -38,10 +38,10 @@ _HEADER_PREFIX = ("E1[eV]", "E1")
 
 def load_united_txt(
     path: str | Path,
-    shot_id: str = "unknown",
+    discharge_id: str = "unknown",
     channels: Iterable[int] = DEFAULT_CHANNELS,
     frame_dt_s: float = 0.05,
-) -> Shot:
+) -> Discharge:
     """Załaduj zunifikowany plik treningowy z wieloma ramkami.
 
     Plik ma postać:
@@ -56,8 +56,8 @@ def load_united_txt(
 
     Returns
     -------
-    Shot
-        Z wypełnionym `shot.channels = {1: EnergyChannelData, 2: ...}`.
+    Discharge
+        Z wypełnionym `discharge.channels = {1: EnergyChannelData, 2: ...}`.
     """
     path = Path(path)
 
@@ -96,7 +96,7 @@ def load_united_txt(
         raise ValueError(f"No frames parsed from {path}")
 
     return _build_shot_from_frame_dict(
-        frames_data, shot_id=shot_id, channels=channels,
+        frames_data, discharge_id=discharge_id, channels=channels,
         frame_dt_s=frame_dt_s, source=str(path),
     )
 
@@ -108,10 +108,10 @@ _TEST_FILE_RE = re.compile(r"test.*?_(\d+).*\.txt$", re.IGNORECASE)
 
 def load_test_folder(
     folder: str | Path,
-    shot_id: str = "unknown",
+    discharge_id: str = "unknown",
     channels: Iterable[int] = DEFAULT_CHANNELS,
     frame_dt_s: float = 0.05,
-) -> Shot:
+) -> Discharge:
     """Załaduj folder z plikami test_<frame_no>.txt (9 kolumn, original format).
 
     Plik test_<n>.txt:
@@ -151,18 +151,18 @@ def load_test_folder(
             frames_data[frame_no] = np.asarray(rows, dtype=float)
 
     return _build_shot_from_frame_dict(
-        frames_data, shot_id=shot_id, channels=channels,
+        frames_data, discharge_id=discharge_id, channels=channels,
         frame_dt_s=frame_dt_s, source=str(folder),
     )
 
 
 # ---------- 3) plan: load_pha (binary) ---------------------------------------
 
-def load_pha(path: str | Path, shot_id: str = "unknown") -> Shot:  # pragma: no cover
+def load_pha(path: str | Path, discharge_id: str = "unknown") -> Discharge:  # pragma: no cover
     """Placeholder for binary .pha loader (final production format).
 
     Not implemented yet — when format spec is available, this is the only
-    function we need to add. The rest of the pipeline (which works on `Shot`)
+    function we need to add. The rest of the pipeline (which works on `Discharge`)
     remains unchanged.
     """
     raise NotImplementedError(
@@ -175,12 +175,12 @@ def load_pha(path: str | Path, shot_id: str = "unknown") -> Shot:  # pragma: no 
 
 def _build_shot_from_frame_dict(
     frames_data: dict[int, np.ndarray],
-    shot_id: str,
+    discharge_id: str,
     channels: Iterable[int],
     frame_dt_s: float,
     source: str,
-) -> Shot:
-    """Wspólna logika: dict[frame_no -> (n_bins, 4)] -> Shot.
+) -> Discharge:
+    """Wspólna logika: dict[frame_no -> (n_bins, 4)] -> Discharge.
 
     Zakładamy, że oś energii jest taka sama dla wszystkich ramek (i kanałów —
     bo plik wejściowy ma wspólne biny po 10 eV).
@@ -223,8 +223,8 @@ def _build_shot_from_frame_dict(
             spectra=spectra,
         )
 
-    return Shot(
-        shot_id=shot_id,
+    return Discharge(
+        discharge_id=discharge_id,
         channels=channels_data,
         frame_dt_s=frame_dt_s,
         meta={"source": source, "n_frames": len(frame_numbers), "n_bins": n_bins},

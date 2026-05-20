@@ -1,4 +1,4 @@
-"""Smoke tests \u2014 podstawowe sanity checks dla biblioteki.
+"""Smoke tests — podstawowe sanity checks dla biblioteki.
 
 Uruchom: python -m pytest tests/   (lub po prostu python tests/test_basic.py)
 """
@@ -9,49 +9,50 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import numpy as np
 
 from pha_lib import io, pipeline
-from pha_lib.fit import exp_decay_model, fit_exp_decay
+from pha_lib.fit import exp_decay_model, fit_injection
 from pha_lib.timetrace import integrate_energy_window
-from pha_lib.discharges import detect_discharges, DischargeDetectionConfig
+from pha_lib.discharges import detect_injections, InjectionDetectionConfig
+from pha_lib.model import TimeTrace, Injection
 
 
-UNITED_TXT = Path("/home/user/workspace/unitedc_62_239.txt")
+UNITED_TXT = Path(__file__).resolve().parent.parent / "data" / "test" / "modified" / "unitedc_62_239.txt"
 
 
 def test_load_united_txt():
-    """Plik wczytuje si\u0119, ramki i biny zgadzaj\u0105 si\u0119 z opisem."""
-    shot = io.load_united_txt(UNITED_TXT, shot_id="t")
-    assert set(shot.channels.keys()) == {1, 2}
-    assert shot.meta["n_frames"] == 178   # 62..239 = 178 ramek
-    assert shot.meta["n_bins"] == 2047    # po usuni\u0119ciu trash footer
-    ch1 = shot.channels[1]
+    """Plik wczytuje się, ramki i biny zgadzają się z opisem."""
+    discharge = io.load_united_txt(UNITED_TXT, discharge_id="t")
+    assert set(discharge.channels.keys()) == {1, 2}
+    assert discharge.meta["n_frames"] == 178   # 62..239 = 178 ramek
+    assert discharge.meta["n_bins"] == 2047    # po usunięciu trash footer
+    ch1 = discharge.channels[1]
     assert ch1.spectra.shape == (178, 2047)
     assert ch1.frame_numbers[0] == 62
     assert ch1.frame_numbers[-1] == 239
 
 
 def test_energy_axis_steps_10eV():
-    shot = io.load_united_txt(UNITED_TXT, shot_id="t")
-    e = shot.channels[1].energy_eV
+    discharge = io.load_united_txt(UNITED_TXT, discharge_id="t")
+    e = discharge.channels[1].energy_eV
     np.testing.assert_allclose(np.diff(e), 10.0, rtol=1e-6)
     assert e[0] == 10.0
 
 
 def test_integrate_window_matches_manual():
-    """Sprawd\u017a r\u0119cznie sum\u0119 dla ramki 102 ch2 \u2014 znamy oczekiwan\u0105 warto\u015b\u0107."""
-    shot = io.load_united_txt(UNITED_TXT, shot_id="t")
-    trace = integrate_energy_window(shot.channels[2], 6660.0, 50.0)
+    """Sprawdź ręcznie sumę dla ramki 102 ch2 — znamy oczekiwaną wartość."""
+    discharge = io.load_united_txt(UNITED_TXT, discharge_id="t")
+    trace = integrate_energy_window(discharge.channels[2], 6660.0, 50.0)
     idx = int(np.where(trace.frame_numbers == 102)[0][0])
     # z peek_data.py wiemy: frame 102 ch2 = 1995
     assert trace.values[idx] == 1995
 
 
-def test_detect_discharges_finds_three():
-    """W tym shocie powinny si\u0119 pojawi\u0107 ~3-4 discharges w channel 2."""
-    shot = io.load_united_txt(UNITED_TXT, shot_id="t")
-    trace = integrate_energy_window(shot.channels[2], 6660.0, 50.0)
-    ds = detect_discharges(trace, 6660.0)
-    starts = [d.start_frame for d in ds]
-    # oczekujemy okolic 100, 147, 194 (te trzy s\u0105 prawdziwe injekcje)
+def test_detect_injections_finds_three():
+    """W tym discharge powinny się pojawić ~3-4 injekcje w channel 2."""
+    discharge = io.load_united_txt(UNITED_TXT, discharge_id="t")
+    trace = integrate_energy_window(discharge.channels[2], 6660.0, 50.0)
+    injections = detect_injections(trace, 6660.0)
+    starts = [d.start_frame for d in injections]
+    # oczekujemy okolic 100, 147, 194 (te trzy są prawdziwe injekcje)
     assert any(98 <= s <= 102 for s in starts), starts
     assert any(145 <= s <= 149 for s in starts), starts
     assert any(192 <= s <= 196 for s in starts), starts
@@ -65,9 +66,20 @@ def test_exp_decay_model_roundtrip():
     (A, t_0) dają tę samą krzywą. Porównujemy więc krzywą, nie poszczególne A, t_0.
     """
     A_true, t0_true, tau_true, C_true = 1000.0, 100.0, 5.0, 50.0
+    # create a longer trace with background C_true so median(trace.values)==C_true
+    full_frames = np.arange(0, 300, dtype=int)
+    values = np.full_like(full_frames, float(C_true), dtype=float)
+
     t = np.arange(100, 110, dtype=float)
     y = exp_decay_model(t, A_true, t0_true, tau_true, C_true)
-    fit = fit_exp_decay(t, y)
+    values[100:110] = y
+
+    # fit_injection expects a TimeTrace and an Injection dataclass
+    trace = TimeTrace(frame_numbers=full_frames, values=values, energy_window_eV=(6660.0, 6660.0), channel_id=2)
+    # t_0 in fit_injection = start_frame + 1 -> to get t_0=100, start_frame must be 99
+    inj = Injection(injection_no=1, channel_id=2, line_energy_eV=6660.0, start_frame=99, finish_frame=109, peak_frame=100)
+
+    fit = fit_injection(trace, inj)
     assert fit.success
     assert abs(fit.tau - tau_true) < 0.05
     assert abs(fit.C - C_true) < 0.5
@@ -76,16 +88,16 @@ def test_exp_decay_model_roundtrip():
 
 
 def test_pipeline_returns_dataframes():
-    shot = io.load_united_txt(UNITED_TXT, shot_id="t")
-    res = pipeline.analyze_shot(shot, line_energy_eV=6660.0)
+    discharge = io.load_united_txt(UNITED_TXT, discharge_id="t")
+    res = pipeline.analyze_discharge(discharge, line_energy_eV=6660.0)
     assert set(res.keys()) == {1, 2}
     df2 = res[2]
-    expected_cols = ["discharge_no", "discharge_E", "start_frame",
+    expected_cols = ["injection_no", "discharge_E", "start_frame",
                      "finish_frame", "A_f", "t_0_f", "tau_f", "C_f",
                      "A", "t_0", "tau", "C"]
     for col in expected_cols:
         assert col in df2.columns, f"missing column: {col}"
-    # przynajmniej 3 prawdziwe discharges w ch2
+    # przynajmniej 3 prawdziwe injekcje w ch2
     assert len(df2) >= 3
 
 

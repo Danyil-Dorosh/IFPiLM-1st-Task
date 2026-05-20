@@ -1,4 +1,4 @@
-"""Klasy danych — fizyczne obiekty na których pracuje biblioteka."""
+"""Klasy danych — fizyczne obiekty, na których pracuje biblioteka."""
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
@@ -23,9 +23,9 @@ class EnergyChannelData:
 
 
 @dataclass
-class Shot:
-    """Pełny shot — kolekcja kanałów + metadane."""
-    shot_id: str
+class Discharge:
+    """Pojedynczy discharge eksperymentalny — kolekcja kanałów + metadane."""
+    discharge_id: str
     channels: dict[int, EnergyChannelData]
     frame_dt_s: float = 0.05
     """Czas trwania jednej ramki w sekundach (typowo 50 ms)."""
@@ -42,9 +42,9 @@ class TimeTrace:
 
 
 @dataclass
-class Discharge:
-    """Pojedynczy discharge — zakres ramek + ramka peaku."""
-    discharge_no: int
+class Injection:
+    """Pojedyncza injekcja — zakres ramek + ramka peaku."""
+    injection_no: int
     channel_id: int
     line_energy_eV: float
     start_frame: int

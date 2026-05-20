@@ -1,4 +1,4 @@
-"""Dopasowanie y(t) = A * exp(-(t - t_0)/tau) + C dla jednego discharge.
+"""Dopasowanie y(t) = A * exp(-(t - t_0)/tau) + C dla jednej injekcji.
 
 Konwencja
 ---------
@@ -16,7 +16,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.optimize import curve_fit
 
-from .model import TimeTrace, Discharge, FitResult
+from .model import TimeTrace, Injection, FitResult
 
 
 def exp_decay_model(t, A, t_0, tau, C):
@@ -24,12 +24,12 @@ def exp_decay_model(t, A, t_0, tau, C):
     return A * np.exp(-(t - t_0) / tau) + C
 
 
-def fit_discharge(
+def fit_injection(
     trace: TimeTrace,
-    discharge: Discharge,
+    injection: Injection,
     n_points: int = 3,
 ) -> FitResult:
-    """Dopasuj eksponensę dla jednego discharge.
+    """Dopasuj eksponensę dla jednej injekcji.
 
     Bierze n_points ramek zaczynając od start_frame + 1 (drugi punkt burstu).
     t_0 zafiksowane na start_frame + 1. C zafiksowane na medianie trace.
@@ -44,7 +44,7 @@ def fit_discharge(
     v = trace.values
 
     # 1. t_0 = drugi punkt burstu = pierwszy punkt brany do fitu
-    t_0 = float(discharge.start_frame + 1)
+    t_0 = float(injection.start_frame + 1)
 
     # 2. C = mediana całego trace (tło)
     C_bg = float(np.median(v))
@@ -93,3 +93,6 @@ def fit_discharge(
             success=False, message=f"fit failed: {type(e).__name__}: {e}",
             n_points=n_avail,
         )
+
+
+fit_discharge = fit_injection

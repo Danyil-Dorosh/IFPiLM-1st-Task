@@ -1,7 +1,7 @@
 """End-to-end demo na unitedc_62_239.txt.
 
-Wczytuje shot, analizuje OSOBNO każdy kanał, zapisuje 2 osobne Parquet/CSV
-i generuje diagnostyczne wykresy (overview + fit per discharge).
+Wczytuje discharge, analizuje OSOBNO każdy kanał, zapisuje 2 osobne Parquet/CSV
+i generuje diagnostyczne wykresy (overview + fit per injection).
 """
 import sys
 from pathlib import Path
@@ -13,8 +13,8 @@ sys.path.insert(0, str(ROOT))
 
 from pha_lib import io, pipeline, export, plotting
 from pha_lib.timetrace import integrate_energy_window
-from pha_lib.discharges import detect_discharges
-from pha_lib.fit import fit_discharge
+from pha_lib.discharges import detect_injections
+from pha_lib.fit import fit_injection
 
 INPUT = Path("data\\test\\modified\\unitedc_62_239.txt")
 OUT = ROOT / "output"
@@ -27,13 +27,13 @@ N_POINTS = 3
 
 def main():
     print(f"Loading {INPUT.name}...")
-    shot = io.load_united_txt(INPUT, shot_id="united_62_239")
-    print(f"  {shot.meta['n_frames']} frames, {shot.meta['n_bins']} bins, "
-          f"frame_dt = {shot.frame_dt_s} s\n")
+    discharge = io.load_united_txt(INPUT, discharge_id="united_62_239")
+    print(f"  {discharge.meta['n_frames']} frames, {discharge.meta['n_bins']} bins, "
+        f"frame_dt = {discharge.frame_dt_s} s\n")
 
     # === ANALIZA: dwa kanały, osobne DataFrame'y ===
-    results = pipeline.analyze_shot(
-        shot,
+    results = pipeline.analyze_discharge(
+        discharge,
         line_energy_eV=LINE_E,
         half_width_eV=HALF_W,
         n_points=N_POINTS,
@@ -41,9 +41,9 @@ def main():
     )
 
     for ch, df in results.items():
-        print(f"--- Channel {ch}: {len(df)} discharges ---")
+        print(f"--- Channel {ch}: {len(df)} injections ---")
         if not df.empty:
-            cols = ["discharge_no", "start_frame", "finish_frame",
+            cols = ["injection_no", "start_frame", "finish_frame",
                     "A_f", "t_0_f", "tau_f", "C_f",
                     "A",   "t_0",   "tau",   "C",
                     "fit_success"]
@@ -56,31 +56,31 @@ def main():
         print(f"Saved channel {ch} -> {p}")
 
     # === WYKRESY DIAGNOSTYCZNE ===
-    # Odtwarzamy TimeTrace + Discharge (te same parametry co w pipeline)
+    # Odtwarzamy TimeTrace + Injection (te same parametry co w pipeline)
     # i rysujemy. Pipeline zwraca tylko DataFrame, więc dla wykresów liczymy
     # to ponownie (tani re-compute, te same wejścia => te same wyniki).
     PLOTS.mkdir(parents=True, exist_ok=True)
 
-    for ch_id, channel in shot.channels.items():
+    for ch_id, channel in discharge.channels.items():
         trace = integrate_energy_window(channel, LINE_E, HALF_W)
-        discharges = detect_discharges(trace, LINE_E)
+        injections = detect_injections(trace, LINE_E)
 
-        # Overview: cały trace z zaznaczonymi discharges
+        # Overview: cały trace z zaznaczonymi injections
         fig, ax = plt.subplots(figsize=(11, 4))
-        plotting.plot_timetrace_with_discharges(trace, discharges, ax=ax)
+        plotting.plot_timetrace_with_injections(trace, injections, ax=ax)
         out_overview = PLOTS / f"overview_ch{ch_id}.png"
         fig.tight_layout()
         fig.savefig(out_overview, dpi=120)
         plt.close(fig)
         print(f"Saved {out_overview}")
 
-        # Per-discharge: fit
-        for d in discharges:
-            fit = fit_discharge(trace, d, n_points=N_POINTS)
+        # Per-injection: fit
+        for d in injections:
+            fit = fit_injection(trace, d, n_points=N_POINTS)
             fig, ax = plt.subplots(figsize=(7, 4.5))
-            plotting.plot_discharge_fit(trace, d, fit,
+            plotting.plot_injection_fit(trace, d, fit,
                                         n_points=N_POINTS, ax=ax)
-            out_fit = PLOTS / f"fit_ch{ch_id}_d{d.discharge_no}.png"
+            out_fit = PLOTS / f"fit_ch{ch_id}_d{d.injection_no}.png"
             fig.tight_layout()
             fig.savefig(out_fit, dpi=120)
             plt.close(fig)

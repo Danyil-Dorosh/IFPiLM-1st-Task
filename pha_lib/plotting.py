@@ -10,27 +10,27 @@ from typing import Iterable, Optional
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .model import TimeTrace, Discharge, FitResult
+from .model import TimeTrace, Injection, FitResult
 from .fit import exp_decay_model
 
 
-def plot_timetrace_with_discharges(
+def plot_timetrace_with_injections(
     trace: TimeTrace,
-    discharges: Iterable[Discharge] = (),
+    injections: Iterable[Injection] = (),
     ax: Optional[plt.Axes] = None,
     title: Optional[str] = None,
 ):
-    """Narysuj TimeTrace + zaznacz zakresy discharges (start..finish)."""
+    """Narysuj TimeTrace + zaznacz zakresy injekcji (start..finish)."""
     if ax is None:
         fig, ax = plt.subplots(figsize=(11, 4))
     ax.plot(trace.frame_numbers, trace.values, "-o", ms=3,
             color="tab:blue", label="events in window")
-    for d in discharges:
+    for d in injections:
         ax.axvspan(d.start_frame - 0.5, d.finish_frame + 0.5,
                    alpha=0.15, color="tab:orange")
         ax.axvline(d.start_frame, color="tab:orange", lw=1)
         ax.text(d.start_frame, ax.get_ylim()[1] * 0.95,
-                f"#{d.discharge_no}", color="tab:orange", fontsize=9)
+                f"#{d.injection_no}", color="tab:orange", fontsize=9)
     ax.set_xlabel("frame")
     ax.set_ylabel("events (sum in energy window)")
     lo, hi = trace.energy_window_eV
@@ -41,15 +41,15 @@ def plot_timetrace_with_discharges(
     return ax
 
 
-def plot_discharge_fit(
+def plot_injection_fit(
     trace: TimeTrace,
-    discharge: Discharge,
+    discharge: Injection,
     fit: FitResult,
     n_points: int = 3,
     pad: int = 4,
     ax: Optional[plt.Axes] = None,
 ):
-    """Narysuj punkty discharge + krzywą dopasowanego modelu.
+    """Narysuj punkty injekcji + krzywą dopasowanego modelu.
 
     Konwencja (zgodna z fit.py):
     - punkty użyte do fitu zaczynają się od start_frame + 1 (drugi punkt burstu),
@@ -94,8 +94,12 @@ def plot_discharge_fit(
 
     ax.set_xlabel("frame")
     ax.set_ylabel("events")
-    ax.set_title(f"Discharge #{discharge.discharge_no} "
+    ax.set_title(f"Injection #{discharge.injection_no} "
                  f"(ch {discharge.channel_id}, frames {s}–{e})")
     ax.grid(alpha=0.3)
     ax.legend(fontsize=8)
     return ax
+
+
+plot_timetrace_with_discharges = plot_timetrace_with_injections
+plot_discharge_fit = plot_injection_fit

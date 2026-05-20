@@ -22,12 +22,12 @@ test_files = list(TEST_FOLDER.glob("test_full_*.txt"))
 print(f"Found {len(test_files)} test_full_*.txt files in test folder\n")
 
 print("1. Loading from test folder (individual test_full_*.txt files)...")
-shot_folder = io.load_test_folder(TEST_FOLDER, shot_id="test_folder")
+shot_folder = io.load_test_folder(TEST_FOLDER, discharge_id="test_folder")
 print(f"   ✓ Loaded: {len(shot_folder.channels)} channels, "
       f"{shot_folder.meta['n_frames']} frames, {shot_folder.meta['n_bins']} bins")
 
 print("\n2. Loading from united file (single combined .txt)...")
-shot_united = io.load_united_txt(UNITED_FILE, shot_id="united_62_239")
+shot_united = io.load_united_txt(UNITED_FILE, discharge_id="united_62_239")
 print(f"   ✓ Loaded: {len(shot_united.channels)} channels, "
       f"{shot_united.meta['n_frames']} frames, {shot_united.meta['n_bins']} bins")
 

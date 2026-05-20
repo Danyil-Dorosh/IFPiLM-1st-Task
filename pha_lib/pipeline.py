@@ -1,4 +1,4 @@
-"""Wysokopoziomowy pipeline: Shot -> 2 osobne DataFrame'y (po jednym na kanał).
+"""Wysokopoziomowy pipeline: Discharge -> 2 osobne DataFrame'y (po jednym na kanał).
 
 KAŻDY KANAŁ LECZONY OSOBNO. Nigdy nie sumujemy Events1+Events2.
 
@@ -6,7 +6,7 @@ Output (zgodnie ze specyfikacją zadania)
 ----------------------------------------
 Per kanał — jeden wiersz na discharge, kolumny:
 
-    discharge_no       — numer kolejny w shocie
+    injection_no       — numer kolejny w discharge
     discharge_E        — energia linii [eV]
     start_frame        — pierwsza ramka discharge (= pierwszy punkt burstu)
     finish_frame       — ostatnia ramka discharge
@@ -26,14 +26,14 @@ from __future__ import annotations
 from typing import Iterable, Optional
 import pandas as pd
 
-from .model import Shot, FitResult
+from .model import Discharge, FitResult
 from .timetrace import integrate_energy_window
-from .discharges import detect_discharges, DischargeDetectionConfig
-from .fit import fit_discharge
+from .discharges import detect_injections, InjectionDetectionConfig
+from .fit import fit_injection
 
 
 RESULT_COLUMNS = [
-    "discharge_no", "discharge_E",
+    "injection_no", "discharge_E",
     "start_frame", "finish_frame",
     "A_f", "t_0_f", "tau_f", "C_f",
     "A",   "t_0",   "tau",   "C",
@@ -41,9 +41,9 @@ RESULT_COLUMNS = [
 ]
 
 
-def _row(discharge_no, line_E, start, finish, fit: FitResult, frame_dt_s: float) -> dict:
+def _row(injection_no, line_E, start, finish, fit: FitResult, frame_dt_s: float) -> dict:
     return {
-        "discharge_no": discharge_no,
+        "injection_no": injection_no,
         "discharge_E":  line_E,
         "start_frame":  start,
         "finish_frame": finish,
@@ -65,19 +65,19 @@ def _row(discharge_no, line_E, start, finish, fit: FitResult, frame_dt_s: float)
 
 
 def analyze_channel(
-    shot: Shot,
+    discharge: Discharge,
     channel_id: int,
     line_energy_eV: float = 6660.0,
     half_width_eV: float = 60.0,
     n_points: int = 3,
-    detection_config: Optional[DischargeDetectionConfig] = None,
+    detection_config: Optional[InjectionDetectionConfig] = None,
 ) -> pd.DataFrame:
     """Pełny pipeline dla 1 kanału — zwraca DataFrame z wynikami fitu.
 
     Parameters
     ----------
-    shot : Shot
-        Załadowany shot (z io.load_united_txt).
+    discharge : Discharge
+        Załadowany discharge (z io.load_united_txt).
     channel_id : int
         1 lub 2.
     line_energy_eV : float
@@ -89,23 +89,23 @@ def analyze_channel(
     detection_config : DischargeDetectionConfig | None
         Parametry wykrywania discharges (None → defaults).
     """
-    if channel_id not in shot.channels:
-        raise KeyError(f"Channel {channel_id} not in shot {shot.shot_id}")
+    if channel_id not in discharge.channels:
+        raise KeyError(f"Channel {channel_id} not in discharge {discharge.discharge_id}")
 
-    channel = shot.channels[channel_id]
+    channel = discharge.channels[channel_id]
     trace = integrate_energy_window(channel, line_energy_eV, half_width_eV)
-    discharges = detect_discharges(trace, line_energy_eV, detection_config)
+    injections = detect_injections(trace, line_energy_eV, detection_config)
 
     rows = []
-    for d in discharges:
-        fit = fit_discharge(trace, d, n_points=n_points)
+    for d in injections:
+        fit = fit_injection(trace, d, n_points=n_points)
         rows.append(_row(
-            discharge_no=d.discharge_no,
+            injection_no=d.injection_no,
             line_E=line_energy_eV,
             start=d.start_frame,
             finish=d.finish_frame,
             fit=fit,
-            frame_dt_s=shot.frame_dt_s,
+            frame_dt_s=discharge.frame_dt_s,
         ))
 
     if not rows:
@@ -113,13 +113,13 @@ def analyze_channel(
     return pd.DataFrame(rows, columns=RESULT_COLUMNS)
 
 
-def analyze_shot(
-    shot: Shot,
+def analyze_discharge(
+    discharge: Discharge,
     line_energy_eV: float = 6660.0,
     half_width_eV: float = 60.0,
     n_points: int = 3,
     channels: Iterable[int] = (1, 2),
-    detection_config: Optional[DischargeDetectionConfig] = None,
+    detection_config: Optional[InjectionDetectionConfig] = None,
 ) -> dict[int, pd.DataFrame]:
     """Wykonaj pełną analizę dla wybranych kanałów (osobno).
 
@@ -130,7 +130,7 @@ def analyze_shot(
     """
     return {
         ch: analyze_channel(
-            shot, channel_id=ch,
+            discharge, channel_id=ch,
             line_energy_eV=line_energy_eV,
             half_width_eV=half_width_eV,
             n_points=n_points,
@@ -138,3 +138,6 @@ def analyze_shot(
         )
         for ch in channels
     }
+
+
+analyze_shot = analyze_discharge
