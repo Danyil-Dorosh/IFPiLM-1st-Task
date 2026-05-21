@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from typing import List
 import numpy as np
 
-from .model import TimeTrace, Injection
+from model import TimeTrace, Injection
 
 
 @dataclass

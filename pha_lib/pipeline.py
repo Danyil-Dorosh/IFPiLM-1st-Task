@@ -26,10 +26,10 @@ from __future__ import annotations
 from typing import Iterable, Optional
 import pandas as pd
 
-from .model import Discharge, FitResult
-from .timetrace import integrate_energy_window
-from .discharges import detect_injections, InjectionDetectionConfig
-from .fit import fit_injection
+from model import Discharge, FitResult
+from timetrace import integrate_energy_window
+from discharges import detect_injections, InjectionDetectionConfig
+from fit import fit_injection
 
 
 RESULT_COLUMNS = [

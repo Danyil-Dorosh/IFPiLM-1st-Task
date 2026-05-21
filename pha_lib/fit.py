@@ -16,7 +16,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.optimize import curve_fit
 
-from .model import TimeTrace, Injection, FitResult
+from model import TimeTrace, Injection, FitResult
 
 
 def exp_decay_model(t, A, t_0, tau, C):

@@ -8,7 +8,7 @@ Each channel is processed INDEPENDENTLY. Never mix Events1 with Events2.
 from __future__ import annotations
 import numpy as np
 
-from .model import EnergyChannelData, TimeTrace
+from model import EnergyChannelData, TimeTrace
 
 
 def integrate_energy_window(

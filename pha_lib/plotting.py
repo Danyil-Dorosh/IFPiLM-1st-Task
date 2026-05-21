@@ -10,8 +10,8 @@ from typing import Iterable, Optional
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .model import TimeTrace, Injection, FitResult
-from .fit import exp_decay_model
+from model import TimeTrace, Injection, FitResult
+from fit import exp_decay_model
 
 
 def plot_timetrace_with_injections(
