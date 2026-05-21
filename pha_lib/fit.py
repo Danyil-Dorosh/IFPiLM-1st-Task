@@ -94,5 +94,5 @@ def fit_injection(
             n_points=n_avail,
         )
 
-
+#Wired with initial shot-discharge-injection terminology confusion
 fit_discharge = fit_injection

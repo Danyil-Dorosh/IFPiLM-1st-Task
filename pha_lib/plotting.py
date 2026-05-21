@@ -49,14 +49,14 @@ def plot_injection_fit(
     pad: int = 4,
     ax: Optional[plt.Axes] = None,
 ):
-        """Plot injection points and the fitted model curve.
+    """Plot injection points and the fitted model curve.
 
-        Convention (same as in fit.py):
-        - fit points start at start_frame + 1 (second point of the burst),
-            take n_points consecutive frames.
-        - fit t_0 = start_frame + 1 (fixed).
-        - fit C  = median of the whole trace (fixed).
-        """
+    Convention (same as in fit.py):
+    - fit points start at start_frame + 1 (second point of the burst),
+      take n_points consecutive frames.
+    - fit t_0 = start_frame + 1 (fixed).
+    - fit C  = median of the whole trace (fixed).
+    """
     if ax is None:
         fig, ax = plt.subplots(figsize=(7, 4.5))
 
