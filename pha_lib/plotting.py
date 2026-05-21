@@ -10,8 +10,12 @@ from typing import Iterable, Optional
 import numpy as np
 import matplotlib.pyplot as plt
 
-from model import TimeTrace, Injection, FitResult
-from fit import exp_decay_model
+try:
+    from .model import TimeTrace, Injection, FitResult
+    from .fit import exp_decay_model
+except ImportError:  # pragma: no cover
+    from model import TimeTrace, Injection, FitResult
+    from fit import exp_decay_model
 
 
 def plot_timetrace_with_injections(

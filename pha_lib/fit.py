@@ -16,7 +16,10 @@ from __future__ import annotations
 import numpy as np
 from scipy.optimize import curve_fit
 
-from model import TimeTrace, Injection, FitResult
+try:
+    from .model import TimeTrace, Injection, FitResult
+except ImportError:  # pragma: no cover
+    from model import TimeTrace, Injection, FitResult
 
 
 def exp_decay_model(t, A, t_0, tau, C):

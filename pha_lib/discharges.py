@@ -22,7 +22,10 @@ from dataclasses import dataclass
 from typing import List
 import numpy as np
 
-from model import TimeTrace, Injection
+try:
+    from .model import TimeTrace, Injection
+except ImportError:  # pragma: no cover
+    from model import TimeTrace, Injection
 
 
 @dataclass

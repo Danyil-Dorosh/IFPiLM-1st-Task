@@ -23,7 +23,10 @@ from typing import Iterable, Optional
 import re
 import numpy as np
 
-from model import Discharge, EnergyChannelData
+try:
+    from .model import Discharge, EnergyChannelData
+except ImportError:  # pragma: no cover
+    from model import Discharge, EnergyChannelData
 
 
 # Channel numbers supported by this version (column pairs E1/Ev1, E2/Ev2).
