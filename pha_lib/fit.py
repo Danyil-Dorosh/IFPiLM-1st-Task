@@ -99,3 +99,5 @@ def fit_injection(
 
 #Wired with initial shot-discharge-injection terminology confusion
 fit_discharge = fit_injection
+# backward-compatible alias placeholder (no adaptive logic here)
+fit_injection_adaptive = fit_injection

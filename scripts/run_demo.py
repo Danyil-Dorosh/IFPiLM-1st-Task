@@ -15,6 +15,18 @@ from pha_lib import io, pipeline, export, plotting
 from pha_lib.timetrace import integrate_energy_window
 from pha_lib.discharges import detect_injections
 from pha_lib.fit import fit_injection
+import importlib.util
+
+# Load external adaptive fitter placed at project root (filename may contain spaces)
+adaptive_path = ROOT / "adaptive point selection.py"
+if adaptive_path.exists():
+    spec = importlib.util.spec_from_file_location("adaptive_point_selection", str(adaptive_path))
+    adaptive_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(adaptive_mod)  # type: ignore
+    fit_injection_adaptive = adaptive_mod.adaptive_fit_injection
+else:
+    # fallback to library alias (no adaptive behaviour)
+    from pha_lib.fit import fit_injection_adaptive  # type: ignore
 
 INPUT = Path("data\\test\\modified\\unitedc_62_239.txt")
 OUT = ROOT / "output"
@@ -23,6 +35,7 @@ PLOTS = ROOT / "output" / "plots"
 LINE_E = 6660.0
 HALF_W = 60.0
 N_POINTS = 3
+MAX_POINTS = 15
 
 
 def main():
@@ -76,10 +89,10 @@ def main():
 
         # Per-injection: fit
         for d in injections:
-            fit = fit_injection(trace, d, n_points=N_POINTS)
+            fit = fit_injection_adaptive(trace, d, max_points=MAX_POINTS)
             fig, ax = plt.subplots(figsize=(7, 4.5))
             plotting.plot_injection_fit(trace, d, fit,
-                                        n_points=N_POINTS, ax=ax)
+                                        n_points=fit.n_points, ax=ax)
             out_fit = PLOTS / f"fit_ch{ch_id}_d{d.injection_no}.png"
             fig.tight_layout()
             fig.savefig(out_fit, dpi=120)
