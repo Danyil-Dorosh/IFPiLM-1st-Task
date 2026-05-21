@@ -66,7 +66,7 @@ for fn in sorted(frames.keys()):
     records.append((fn, int(Ev1[m1].sum()), int(Ev2[m2].sum())))
 
 import csv
-with open("/home/user/workspace/pha_lib_project/output/window_6660_per_frame.csv", "w", newline="") as f:
+with open("output/window_6660_per_frame.csv", "w", newline="") as f:
     w = csv.writer(f)
     w.writerow(["frame", "events1_window", "events2_window"])
     w.writerows(records)
