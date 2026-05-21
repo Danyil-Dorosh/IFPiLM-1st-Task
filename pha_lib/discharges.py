@@ -31,12 +31,12 @@ except ImportError:  # pragma: no cover
 @dataclass
 class InjectionDetectionConfig:
     """Configuration for injection detection."""
-    peak_threshold_factor: float = 3.0
-    """How many noise units above background to consider a peak.
-    Default 3 sigma — a common detection threshold in physics."""
-
-    end_threshold_factor: float = 1.5
-    """Threshold to consider the signal returned to background (end)."""
+    threshold_factor: float = 3.0
+    """Noise units above background to consider the detection threshold.
+    The same threshold is used both for detecting a peak (start) and for
+    considering the signal returned to background (end). Using a single
+    threshold removes the previous high/low separation and simplifies
+    tuning."""
 
     min_jump: float = 20.0
     """Minimum absolute jump in events between frames — avoids weak fluctuations."""
@@ -79,10 +79,8 @@ def detect_injections(
         return []
 
     bg, scale = _robust_background_and_scale(v)
-    high_thr = bg + cfg.peak_threshold_factor * scale
-    low_thr = bg + cfg.end_threshold_factor * scale
-
-    above = v >= high_thr
+    thr = bg + cfg.threshold_factor * scale
+    above = v >= thr
 
     # Detect start candidates: an above-threshold frame with a sufficiently
     # large jump relative to the previous frame and not too close to the
@@ -107,12 +105,12 @@ def detect_injections(
             continue
 
         start_idx = i
-        # find finish: first place where signal drops below low_thr and
+        # find finish: first place where signal drops below threshold and
         # stays below for min_quiet_frames frames
         j = i
         quiet_count = 0
         while j < n:
-            if v[j] < low_thr:
+            if v[j] < thr:
                 quiet_count += 1
                 if quiet_count >= cfg.min_quiet_frames:
                     break
