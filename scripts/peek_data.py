@@ -1,7 +1,7 @@
 """Quick exploratory look at unitedc_62_239.txt.
 
-Goal: dla każdej ramki policz sumę Events1 i Events2 w oknie 6660 eV +/- 50 eV
-i zobacz, kiedy są skoki — to nam pokaże, ile jest discharges w tym shocie.
+Goal: for each frame, compute Events1 and Events2 sums in the 6660 eV +/- 50 eV window
+and inspect when jumps occur — this shows how many injections are present in the shot.
 """
 import sys
 from pathlib import Path

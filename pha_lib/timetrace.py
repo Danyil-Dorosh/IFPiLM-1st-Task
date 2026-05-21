@@ -1,9 +1,9 @@
-"""Budowa przebiegów czasowych z widm (TimeTrace) — osobno dla każdego kanału.
+"""Construct time traces from spectra (TimeTrace) — one channel at a time.
 
-y(t) = suma countów w oknie [E_line - half_width, E_line + half_width]
-       dla każdej ramki t.
+y(t) = sum of counts in window [E_line - half_width, E_line + half_width]
+    for each frame t.
 
-Każdy kanał obrabiany NIEZALEŻNIE. Nigdy nie mieszamy Events1 z Events2.
+Each channel is processed INDEPENDENTLY. Never mix Events1 with Events2.
 """
 from __future__ import annotations
 import numpy as np
@@ -16,26 +16,25 @@ def integrate_energy_window(
     center_eV: float,
     half_width_eV: float = 60.0,
 ) -> TimeTrace:
-    """Zbuduj TimeTrace z widm 1 kanału — zwykła suma w oknie energii.
+    """Build a TimeTrace from one channel's spectra — simple sum in an energy window.
 
-    Dla każdej ramki sumujemy counts (Events) we wszystkich binach, których
-    energia E spełnia:
+    For each frame we sum counts (Events) in all bins whose energy E satisfies:
         center_eV - half_width_eV  <=  E  <=  center_eV + half_width_eV
 
     Parameters
     ----------
     channel : EnergyChannelData
-        Dane z **jednego** kanału energetycznego (osobno!).
+        Data from a single energy channel (processed separately).
     center_eV : float
-        Środek okna energii, np. 6660 eV dla linii Fe XXV.
+        Center of the energy window, e.g. 6660 eV for the Fe XXV line.
     half_width_eV : float, default 60
-        Pół-szerokość okna ±half_width_eV. Domyślne ±60 eV łapie linię Fe XXV
-        razem z poszerzeniem dopplerowskim i rozdzielczością detektora.
+        Half-width ±half_width_eV. Default ±60 eV captures the Fe XXV line
+        including Doppler broadening and detector resolution.
 
     Returns
     -------
     TimeTrace
-        values[i] = liczba zdarzeń w oknie w ramce i (typ float).
+        values[i] = number of events in the window at frame i (float).
     """
     if half_width_eV <= 0:
         raise ValueError("half_width_eV must be positive")
@@ -51,7 +50,7 @@ def integrate_energy_window(
             f"(no bins fall inside)."
         )
 
-    # Suma countów po wybranych binach, dla każdej ramki osobno
+    # Sum counts across selected bins for each frame separately
     values = channel.spectra[:, mask].sum(axis=1).astype(float)  # (n_frames,)
 
     return TimeTrace(

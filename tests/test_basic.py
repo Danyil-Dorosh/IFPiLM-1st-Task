@@ -1,6 +1,6 @@
-"""Smoke tests — podstawowe sanity checks dla biblioteki.
+"""Smoke tests — basic sanity checks for the library.
 
-Uruchom: python -m pytest tests/   (lub po prostu python tests/test_basic.py)
+Run with: python -m pytest tests/   (or simply python tests/test_basic.py)
 """
 import sys
 from pathlib import Path
@@ -19,11 +19,11 @@ UNITED_TXT = Path(__file__).resolve().parent.parent / "data" / "test" / "modifie
 
 
 def test_load_united_txt():
-    """Plik wczytuje się, ramki i biny zgadzają się z opisem."""
+    """File loads; frames and bins match the description."""
     discharge = io.load_united_txt(UNITED_TXT, discharge_id="t")
     assert set(discharge.channels.keys()) == {1, 2}
     assert discharge.meta["n_frames"] == 178   # 62..239 = 178 ramek
-    assert discharge.meta["n_bins"] == 2047    # po usunięciu trash footer
+    assert discharge.meta["n_bins"] == 2047    # after removing trash footer
     ch1 = discharge.channels[1]
     assert ch1.spectra.shape == (178, 2047)
     assert ch1.frame_numbers[0] == 62
@@ -38,7 +38,7 @@ def test_energy_axis_steps_10eV():
 
 
 def test_integrate_window_matches_manual():
-    """Sprawdź ręcznie sumę dla ramki 102 ch2 — znamy oczekiwaną wartość."""
+    """Manually check the sum for frame 102 ch2 — we know the expected value."""
     discharge = io.load_united_txt(UNITED_TXT, discharge_id="t")
     trace = integrate_energy_window(discharge.channels[2], 6660.0, 50.0)
     idx = int(np.where(trace.frame_numbers == 102)[0][0])
@@ -47,23 +47,24 @@ def test_integrate_window_matches_manual():
 
 
 def test_detect_injections_finds_three():
-    """W tym discharge powinny się pojawić ~3-4 injekcje w channel 2."""
+    """This discharge should contain ~3-4 injections in channel 2."""
     discharge = io.load_united_txt(UNITED_TXT, discharge_id="t")
     trace = integrate_energy_window(discharge.channels[2], 6660.0, 50.0)
     injections = detect_injections(trace, 6660.0)
     starts = [d.start_frame for d in injections]
-    # oczekujemy okolic 100, 147, 194 (te trzy są prawdziwe injekcje)
+    # expect around 100, 147, 194 (these three are true injections)
     assert any(98 <= s <= 102 for s in starts), starts
     assert any(145 <= s <= 149 for s in starts), starts
     assert any(192 <= s <= 196 for s in starts), starts
 
 
 def test_exp_decay_model_roundtrip():
-    """Wygeneruj idealny zanik — fit musi oddać tę samą krzywą y(t).
+    """Generate an ideal decay — fit must reproduce the same curve y(t).
 
-    Uwaga fizyczna: parametry (A, t_0) są zdegenerowane —
-    A*exp(-(t-t_0)/tau) = (A*exp(t_0/tau)) * exp(-t/tau), więc różne pary
-    (A, t_0) dają tę samą krzywą. Porównujemy więc krzywą, nie poszczególne A, t_0.
+    Physical note: parameters (A, t_0) are degenerate —
+    A*exp(-(t-t_0)/tau) = (A*exp(t_0/tau)) * exp(-t/tau), so different pairs
+    (A, t_0) produce the same curve. We therefore compare the curve, not
+    individual A or t_0 values.
     """
     A_true, t0_true, tau_true, C_true = 1000.0, 100.0, 5.0, 50.0
     # create a longer trace with background C_true so median(trace.values)==C_true
@@ -97,7 +98,7 @@ def test_pipeline_returns_dataframes():
                      "A", "t_0", "tau", "C"]
     for col in expected_cols:
         assert col in df2.columns, f"missing column: {col}"
-    # przynajmniej 3 prawdziwe injekcje w ch2
+    # at least 3 real injections in ch2
     assert len(df2) >= 3
 
 

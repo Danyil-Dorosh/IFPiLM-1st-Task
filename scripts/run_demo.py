@@ -1,7 +1,7 @@
-"""End-to-end demo na unitedc_62_239.txt.
+"""End-to-end demo using unitedc_62_239.txt.
 
-Wczytuje discharge, analizuje OSOBNO każdy kanał, zapisuje 2 osobne Parquet/CSV
-i generuje diagnostyczne wykresy (overview + fit per injection).
+Loads a discharge, analyzes each channel SEPARATELY, writes two Parquet/CSV
+files and generates diagnostic plots (overview + per-injection fits).
 """
 import sys
 from pathlib import Path
@@ -31,7 +31,7 @@ def main():
     print(f"  {discharge.meta['n_frames']} frames, {discharge.meta['n_bins']} bins, "
         f"frame_dt = {discharge.frame_dt_s} s\n")
 
-    # === ANALIZA: dwa kanały, osobne DataFrame'y ===
+    # === ANALYSIS: two channels, separate DataFrames ===
     results = pipeline.analyze_discharge(
         discharge,
         line_energy_eV=LINE_E,
@@ -55,17 +55,17 @@ def main():
     for ch, p in paths.items():
         print(f"Saved channel {ch} -> {p}")
 
-    # === WYKRESY DIAGNOSTYCZNE ===
-    # Odtwarzamy TimeTrace + Injection (te same parametry co w pipeline)
-    # i rysujemy. Pipeline zwraca tylko DataFrame, więc dla wykresów liczymy
-    # to ponownie (tani re-compute, te same wejścia => te same wyniki).
+    # === DIAGNOSTIC PLOTS ===
+    # Recompute TimeTrace + Injections (same parameters as in pipeline)
+    # and plot. The pipeline returns only DataFrames, so we recompute traces
+    # for plotting (cheap recompute, same inputs => same outputs).
     PLOTS.mkdir(parents=True, exist_ok=True)
 
     for ch_id, channel in discharge.channels.items():
         trace = integrate_energy_window(channel, LINE_E, HALF_W)
         injections = detect_injections(trace, LINE_E)
 
-        # Overview: cały trace z zaznaczonymi injections
+        # Overview: full trace with highlighted injections
         fig, ax = plt.subplots(figsize=(11, 4))
         plotting.plot_timetrace_with_injections(trace, injections, ax=ax)
         out_overview = PLOTS / f"overview_ch{ch_id}.png"

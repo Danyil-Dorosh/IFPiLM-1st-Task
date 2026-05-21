@@ -1,21 +1,21 @@
-"""I/O — czytanie wejściowych plików tekstowych do obiektu Discharge.
+"""I/O — read input text files into a `Discharge` object.
 
-Obsługiwane formaty
--------------------
-1. **United training file** (`unitedc_<a>_<b>.txt`) — wszystkie ramki w jednym
-   pliku, każda ramka zaczyna się linią `<frame_no>-`, potem header
-   `E1[eV] Events1 E2[eV] Events2`, potem 2048 wierszy danych.
-   Załadować przez `load_united_txt`.
+Supported formats
+-----------------
+1. **United training file** (`unitedc_<a>_<b>.txt`) — all frames in one
+    file, each frame starts with a line `<frame_no>-`, then header
+    `E1[eV] Events1 E2[eV] Events2`, then ~2048 data rows.
+    Load using `load_united_txt`.
 
-2. **Folder z indywidualnymi plikami** `test_<frame_no>.txt` (9 kolumn,
-   header + 2048 wierszy danych + 1 wiersz timestamp). Załadować przez
-   `load_test_folder`.
+2. **Folder of individual files** `test_<frame_no>.txt` (9 columns,
+    header + ~2048 data rows + timestamp row). Load using
+    `load_test_folder`.
 
-3. **(planned) Binary .pha** — TODO, podpisuje API już teraz aby później
-   tylko wstawić implementację.
+3. **(planned) Binary .pha** — TODO; API placeholder exists so a .pha
+    loader can be implemented later.
 
-Każda funkcja zwraca obiekt `Discharge` (model.Discharge) — od tego momentu reszta
-biblioteki nie wie, skąd przyszły dane.
+Each loader returns a `Discharge` object (model.Discharge) — the rest
+of the library works entirely with `Discharge` and is input-format agnostic.
 """
 from __future__ import annotations
 from pathlib import Path
@@ -26,7 +26,7 @@ import numpy as np
 from .model import Discharge, EnergyChannelData
 
 
-# Numery kanałów które obsługujemy w obecnej wersji (col-pairs E1/Ev1, E2/Ev2).
+# Channel numbers supported by this version (column pairs E1/Ev1, E2/Ev2).
 DEFAULT_CHANNELS = (1, 2)
 
 
@@ -42,9 +42,9 @@ def load_united_txt(
     channels: Iterable[int] = DEFAULT_CHANNELS,
     frame_dt_s: float = 0.05,
 ) -> Discharge:
-    """Załaduj zunifikowany plik treningowy z wieloma ramkami.
+    """Load the unified training file containing multiple frames.
 
-    Plik ma postać:
+    The file format looks like:
         62-
         E1[eV] Events1 E2[eV] Events2
         10.000 0 10.000 0
@@ -57,7 +57,7 @@ def load_united_txt(
     Returns
     -------
     Discharge
-        Z wypełnionym `discharge.channels = {1: EnergyChannelData, 2: ...}`.
+        A `Discharge` with `discharge.channels = {1: EnergyChannelData, 2: ...}`.
     """
     path = Path(path)
 
@@ -101,7 +101,7 @@ def load_united_txt(
     )
 
 
-# ---------- 2) folder z test_<n>.txt -----------------------------------------
+# ---------- 2) folder with test_<n>.txt ------------------------------------
 
 _TEST_FILE_RE = re.compile(r"test.*?_(\d+).*\.txt$", re.IGNORECASE)
 
@@ -112,13 +112,13 @@ def load_test_folder(
     channels: Iterable[int] = DEFAULT_CHANNELS,
     frame_dt_s: float = 0.05,
 ) -> Discharge:
-    """Załaduj folder z plikami test_<frame_no>.txt (9 kolumn, original format).
+    """Load a folder with `test_<frame_no>.txt` files (9 columns, original format).
 
-    Plik test_<n>.txt:
+    Example `test_<n>.txt`:
         Channel E1[eV] Events1 E2[eV] Events2 E3[eV] Events3 E4[eV] Events4
         0 10.000 0 10.000 0 10.000 0 10.000 0
         ...
-        2025-04-29 07:52:21.619 (...)   <- timestamp linia, ignorujemy
+        2025-04-29 07:52:21.619 (...)   <- timestamp line, ignored
     """
     folder = Path(folder)
     files = sorted(folder.glob("test_*.txt"))
@@ -156,7 +156,7 @@ def load_test_folder(
     )
 
 
-# ---------- 3) plan: load_pha (binary) ---------------------------------------
+# ---------- 3) plan: load_pha (binary) -------------------------------------
 
 def load_pha(path: str | Path, discharge_id: str = "unknown") -> Discharge:  # pragma: no cover
     """Placeholder for binary .pha loader (final production format).
@@ -171,7 +171,7 @@ def load_pha(path: str | Path, discharge_id: str = "unknown") -> Discharge:  # p
     )
 
 
-# ---------- shared helper ----------------------------------------------------
+# ---------- shared helper --------------------------------------------------
 
 def _build_shot_from_frame_dict(
     frames_data: dict[int, np.ndarray],
@@ -180,10 +180,10 @@ def _build_shot_from_frame_dict(
     frame_dt_s: float,
     source: str,
 ) -> Discharge:
-    """Wspólna logika: dict[frame_no -> (n_bins, 4)] -> Discharge.
+    """Shared logic: dict[frame_no -> (n_bins, 4)] -> Discharge.
 
-    Zakładamy, że oś energii jest taka sama dla wszystkich ramek (i kanałów —
-    bo plik wejściowy ma wspólne biny po 10 eV).
+    We assume the energy axis is the same for all frames (and channels),
+    because the input file uses common bins every 10 eV.
     """
     frame_numbers = np.array(sorted(frames_data.keys()), dtype=int)
     sample = frames_data[int(frame_numbers[0])]
@@ -197,12 +197,12 @@ def _build_shot_from_frame_dict(
                 f"expected {n_bins} (matching frame {frame_numbers[0]})."
             )
 
-    # Energia jest taka sama w col 0 i col 2 (przynajmniej w naszych plikach)
+    # Energy is the same in column 0 and column 2 (in our files)
     energy_eV = sample[:, 0].copy()
 
     channels_data: dict[int, EnergyChannelData] = {}
     for ch in channels:
-        # col layout: [E1, Ev1, E2, Ev2]
+        # column layout: [E1, Ev1, E2, Ev2]
         if ch == 1:
             counts_col = 1
         elif ch == 2:
