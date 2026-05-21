@@ -47,7 +47,7 @@ class InjectionDetectionConfig:
     min_separation_frames: int = 3
     """Minimum separation in frames between two injections (otherwise merge)."""
 
-    max_frames_per_discharge: int = 25
+    max_frames_per_discharge: int = 17
     """Maximum length of an injection (protects against non-ending traces)."""
 
 
