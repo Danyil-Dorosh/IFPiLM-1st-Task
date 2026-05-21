@@ -100,6 +100,6 @@ def plot_injection_fit(
     ax.legend(fontsize=8)
     return ax
 
-
+#Wired with initial shot-discharge-injection terminology confusion
 plot_timetrace_with_discharges = plot_timetrace_with_injections
 plot_discharge_fit = plot_injection_fit

@@ -137,6 +137,6 @@ def detect_injections(
 
     return injections
 
-
+#Wired with initial shot-discharge-injection terminology confusion
 detect_discharges = detect_injections
 DischargeDetectionConfig = InjectionDetectionConfig

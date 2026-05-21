@@ -139,5 +139,5 @@ def analyze_discharge(
         for ch in channels
     }
 
-
+#Wired with initial shot-discharge-injection terminology confusion
 analyze_shot = analyze_discharge
