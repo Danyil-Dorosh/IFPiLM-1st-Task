@@ -1,36 +1,40 @@
-"""Wykresy diagnostyczne — pomagają zobaczyć, czy fit ma sens fizyczny.
+"""Diagnostic plots — help assess whether the fit makes physical sense.
 
-W fizyce wykres to nie ozdoba, tylko narzędzie kontroli jakości.
-Minimum:
-- przebieg czasowy (TimeTrace) z zaznaczonymi discharges,
-- nakładka modelu fitu na punkty użyte do dopasowania.
+In physics, a plot is a quality-control tool, not decoration.
+Minimum plots:
+- time trace (TimeTrace) with highlighted injections,
+- overlay of the fitted model on the points used for fitting.
 """
 from __future__ import annotations
 from typing import Iterable, Optional
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .model import TimeTrace, Discharge, FitResult
-from .fit import exp_decay_model
+try:
+    from .model import TimeTrace, Injection, FitResult
+    from .fit import exp_decay_model
+except ImportError:  # pragma: no cover
+    from model import TimeTrace, Injection, FitResult
+    from fit import exp_decay_model
 
 
-def plot_timetrace_with_discharges(
+def plot_timetrace_with_injections(
     trace: TimeTrace,
-    discharges: Iterable[Discharge] = (),
+    injections: Iterable[Injection] = (),
     ax: Optional[plt.Axes] = None,
     title: Optional[str] = None,
 ):
-    """Narysuj TimeTrace + zaznacz zakresy discharges (start..finish)."""
+    """Plot a TimeTrace and highlight injection ranges (start..finish)."""
     if ax is None:
         fig, ax = plt.subplots(figsize=(11, 4))
     ax.plot(trace.frame_numbers, trace.values, "-o", ms=3,
             color="tab:blue", label="events in window")
-    for d in discharges:
+    for d in injections:
         ax.axvspan(d.start_frame - 0.5, d.finish_frame + 0.5,
                    alpha=0.15, color="tab:orange")
         ax.axvline(d.start_frame, color="tab:orange", lw=1)
         ax.text(d.start_frame, ax.get_ylim()[1] * 0.95,
-                f"#{d.discharge_no}", color="tab:orange", fontsize=9)
+                f"#{d.injection_no}", color="tab:orange", fontsize=9)
     ax.set_xlabel("frame")
     ax.set_ylabel("events (sum in energy window)")
     lo, hi = trace.energy_window_eV
@@ -41,21 +45,21 @@ def plot_timetrace_with_discharges(
     return ax
 
 
-def plot_discharge_fit(
+def plot_injection_fit(
     trace: TimeTrace,
-    discharge: Discharge,
+    discharge: Injection,
     fit: FitResult,
     n_points: int = 3,
     pad: int = 4,
     ax: Optional[plt.Axes] = None,
 ):
-    """Narysuj punkty discharge + krzywą dopasowanego modelu.
+    """Plot injection points and the fitted model curve.
 
-    Konwencja (zgodna z fit.py):
-    - punkty użyte do fitu zaczynają się od start_frame + 1 (drugi punkt burstu),
-      bierzemy n_points kolejnych ramek.
-    - t_0 fitu = start_frame + 1 (zafiksowane).
-    - C fitu  = mediana całego trace (zafiksowane).
+    Convention (same as in fit.py):
+    - fit points start at start_frame + 1 (second point of the burst),
+      take n_points consecutive frames.
+    - fit t_0 = start_frame + 1 (fixed).
+    - fit C  = median of the whole trace (fixed).
     """
     if ax is None:
         fig, ax = plt.subplots(figsize=(7, 4.5))
@@ -65,13 +69,13 @@ def plot_discharge_fit(
     s = discharge.start_frame
     e = discharge.finish_frame
 
-    # context window (kilka ramek przed i po discharge)
+    # context window (a few frames before and after the injection)
     lo, hi = s - pad, e + pad
     mask = (fn >= lo) & (fn <= hi)
     ax.plot(fn[mask], v[mask], "o-", ms=4, color="0.4", alpha=0.7,
             label="data (context)")
 
-    # punkty użyte do fitu: od start_frame + 1, n_points sztuk
+    # points used for fitting: from start_frame + 1, n_points long
     try:
         si = int(np.where(fn == s + 1)[0][0])
     except IndexError:
@@ -82,20 +86,24 @@ def plot_discharge_fit(
         ax.plot(fn[si:end_a], v[si:end_a], "o", ms=9, mfc="none",
                 mec="tab:red", mew=2, label="fit pts")
 
-    # krzywa modelu
+    # model curve
     if fit.success:
         t_dense = np.linspace(s - 0.5, e + 0.5, 200)
         y_model = exp_decay_model(t_dense, fit.A, fit.t_0, fit.tau, fit.C)
         ax.plot(t_dense, y_model, "-", color="tab:red",
                 label=f"fit: τ={fit.tau:.2f} fr, A={fit.A:.1f}")
 
-    # poziom tła C (mediana trace)
+    # background level C (median of the trace)
     ax.axhline(fit.C, color="tab:gray", ls=":", lw=1, label=f"C={fit.C:.1f}")
 
     ax.set_xlabel("frame")
     ax.set_ylabel("events")
-    ax.set_title(f"Discharge #{discharge.discharge_no} "
+    ax.set_title(f"Injection #{discharge.injection_no} "
                  f"(ch {discharge.channel_id}, frames {s}–{e})")
     ax.grid(alpha=0.3)
     ax.legend(fontsize=8)
     return ax
+
+#Wired with initial shot-discharge-injection terminology confusion
+plot_timetrace_with_discharges = plot_timetrace_with_injections
+plot_discharge_fit = plot_injection_fit

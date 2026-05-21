@@ -1,39 +1,45 @@
-"""Wysokopoziomowy pipeline: Shot -> 2 osobne DataFrame'y (po jednym na kanał).
+"""High-level pipeline: Discharge -> two separate DataFrames (one per channel).
 
-KAŻDY KANAŁ LECZONY OSOBNO. Nigdy nie sumujemy Events1+Events2.
+EACH CHANNEL IS PROCESSED INDEPENDENTLY. Never sum Events1+Events2.
 
-Output (zgodnie ze specyfikacją zadania)
-----------------------------------------
-Per kanał — jeden wiersz na discharge, kolumny:
+Output (task specification)
+----------------------------
+Per channel — one row per detected injection, columns:
 
-    discharge_no       — numer kolejny w shocie
-    discharge_E        — energia linii [eV]
-    start_frame        — pierwsza ramka discharge (= pierwszy punkt burstu)
-    finish_frame       — ostatnia ramka discharge
+    injection_no       — sequential number of the injection within the discharge
+    discharge_E        — line energy [eV]
+    start_frame        — first frame of the injection (first burst point)
+    finish_frame       — last frame of the injection
 
-    A_f, t_0_f, tau_f, C_f   — współczynniki w jednostkach **ramek**
-    A,   t_0,   tau,   C     — współczynniki w jednostkach **sekund**
+    A_f, t_0_f, tau_f, C_f   — fit parameters in units of **frames**
+    A,   t_0,   tau,   C     — fit parameters converted to **seconds**
 
-Suffix `_f` = "for frames". Bez suffixu = sekundy.
+Suffix `_f` = "for frames". No suffix = seconds.
 
-Konwersja:
+Conversion:
     t_0 = t_0_f * frame_dt_s
     tau = tau_f * frame_dt_s
-    A   = A_f   (amplituda — bez wymiaru czasu, kopia)
-    C   = C_f   (tło — bez wymiaru czasu, kopia)
+    A   = A_f   (amplitude — count units, copied)
+    C   = C_f   (background — count units, copied)
 """
 from __future__ import annotations
 from typing import Iterable, Optional
 import pandas as pd
 
-from .model import Shot, FitResult
-from .timetrace import integrate_energy_window
-from .discharges import detect_discharges, DischargeDetectionConfig
-from .fit import fit_discharge
+try:
+    from .model import Discharge, FitResult
+    from .timetrace import integrate_energy_window
+    from .discharges import detect_injections, InjectionDetectionConfig
+    from .fit import fit_injection
+except ImportError:  # pragma: no cover
+    from model import Discharge, FitResult
+    from timetrace import integrate_energy_window
+    from discharges import detect_injections, InjectionDetectionConfig
+    from fit import fit_injection
 
 
 RESULT_COLUMNS = [
-    "discharge_no", "discharge_E",
+    "injection_no", "discharge_E",
     "start_frame", "finish_frame",
     "A_f", "t_0_f", "tau_f", "C_f",
     "A",   "t_0",   "tau",   "C",
@@ -41,20 +47,20 @@ RESULT_COLUMNS = [
 ]
 
 
-def _row(discharge_no, line_E, start, finish, fit: FitResult, frame_dt_s: float) -> dict:
+def _row(injection_no, line_E, start, finish, fit: FitResult, frame_dt_s: float) -> dict:
     return {
-        "discharge_no": discharge_no,
+        "injection_no": injection_no,
         "discharge_E":  line_E,
         "start_frame":  start,
         "finish_frame": finish,
-        # --- jednostki: RAMKI ---
+        # --- units: FRAMES ---
         "A_f":   fit.A,
         "t_0_f": fit.t_0,
         "tau_f": fit.tau,
         "C_f":   fit.C,
-        # --- jednostki: SEKUNDY ---
-        # t_0 i tau mnożymy przez frame_dt_s.
-        # A i C to amplitudy (liczba zdarzeń) — bez wymiaru czasu, więc kopia.
+        # --- units: SECONDS ---
+        # multiply t_0 and tau by frame_dt_s.
+        # A and C are amplitudes (event counts) — not time-dependent, so copied.
         "A":   fit.A,
         "t_0": fit.t_0 * frame_dt_s,
         "tau": fit.tau * frame_dt_s,
@@ -65,47 +71,47 @@ def _row(discharge_no, line_E, start, finish, fit: FitResult, frame_dt_s: float)
 
 
 def analyze_channel(
-    shot: Shot,
+    discharge: Discharge,
     channel_id: int,
     line_energy_eV: float = 6660.0,
     half_width_eV: float = 60.0,
     n_points: int = 3,
-    detection_config: Optional[DischargeDetectionConfig] = None,
+    detection_config: Optional[InjectionDetectionConfig] = None,
 ) -> pd.DataFrame:
-    """Pełny pipeline dla 1 kanału — zwraca DataFrame z wynikami fitu.
+    """Full pipeline for one channel — returns a DataFrame with fit results.
 
     Parameters
     ----------
-    shot : Shot
-        Załadowany shot (z io.load_united_txt).
+    discharge : Discharge
+        Loaded Discharge (from io.load_united_txt).
     channel_id : int
-        1 lub 2.
+        1 or 2.
     line_energy_eV : float
-        Środek okna energii (domyślnie Fe XXV @ 6660 eV).
+        Center of the energy window (default Fe XXV @ 6660 eV).
     half_width_eV : float
-        Połowa szerokości okna ±half_width_eV (domyślnie 60 eV).
+        Half-width ±half_width_eV (default 60 eV).
     n_points : int
-        Ile punktów wziąć do fitu, licząc od start_frame+1 (drugi punkt burstu).
+        Number of points to use for fitting, counting from start_frame+1.
     detection_config : DischargeDetectionConfig | None
-        Parametry wykrywania discharges (None → defaults).
+        Injection detection parameters (None → defaults).
     """
-    if channel_id not in shot.channels:
-        raise KeyError(f"Channel {channel_id} not in shot {shot.shot_id}")
+    if channel_id not in discharge.channels:
+        raise KeyError(f"Channel {channel_id} not in discharge {discharge.discharge_id}")
 
-    channel = shot.channels[channel_id]
+    channel = discharge.channels[channel_id]
     trace = integrate_energy_window(channel, line_energy_eV, half_width_eV)
-    discharges = detect_discharges(trace, line_energy_eV, detection_config)
+    injections = detect_injections(trace, line_energy_eV, detection_config)
 
     rows = []
-    for d in discharges:
-        fit = fit_discharge(trace, d, n_points=n_points)
+    for d in injections:
+        fit = fit_injection(trace, d, n_points=n_points)
         rows.append(_row(
-            discharge_no=d.discharge_no,
+            injection_no=d.injection_no,
             line_E=line_energy_eV,
             start=d.start_frame,
             finish=d.finish_frame,
             fit=fit,
-            frame_dt_s=shot.frame_dt_s,
+            frame_dt_s=discharge.frame_dt_s,
         ))
 
     if not rows:
@@ -113,24 +119,24 @@ def analyze_channel(
     return pd.DataFrame(rows, columns=RESULT_COLUMNS)
 
 
-def analyze_shot(
-    shot: Shot,
+def analyze_discharge(
+    discharge: Discharge,
     line_energy_eV: float = 6660.0,
     half_width_eV: float = 60.0,
     n_points: int = 3,
     channels: Iterable[int] = (1, 2),
-    detection_config: Optional[DischargeDetectionConfig] = None,
+    detection_config: Optional[InjectionDetectionConfig] = None,
 ) -> dict[int, pd.DataFrame]:
-    """Wykonaj pełną analizę dla wybranych kanałów (osobno).
+    """Run full analysis for the selected channels (separately).
 
     Returns
     -------
     dict[int, pd.DataFrame]
-        {channel_id -> wynikowy DataFrame}. Kanały SĄ NIEZALEŻNE.
+        {channel_id -> resulting DataFrame}. Channels are INDEPENDENT.
     """
     return {
         ch: analyze_channel(
-            shot, channel_id=ch,
+            discharge, channel_id=ch,
             line_energy_eV=line_energy_eV,
             half_width_eV=half_width_eV,
             n_points=n_points,
@@ -138,3 +144,6 @@ def analyze_shot(
         )
         for ch in channels
     }
+
+#Wired with initial shot-discharge-injection terminology confusion
+analyze_shot = analyze_discharge

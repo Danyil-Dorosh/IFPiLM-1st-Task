@@ -14,10 +14,14 @@
 
 
 # Physical context:
-During the experiment (the data of which is being analyzed), the stellator is being injected with inputies - and, correspondingly, cleans itself. The goal is to research the efectivness of a cleaning system.
-PHA system (consisting of 3 energy channels) is doing spectroscopy of stellator inside (thats it, the spectroscopy of inpurities). The amount of deceted photon during cleaning must pasować do wzorku y(t) = A*exp(-(t-t_0)/tau) + C - where
-y(t) - amount of detected photons (Events№)
-C, A, t_0 (both in frames or time-scale) - coefficients which are to detect
+During the experiment the stellarator is injected with impurities and then
+cleans itself. The goal is to measure the effectiveness of the cleaning.
+The PHA system (3 energy channels) performs spectroscopy. The detected
+photon counts during a cleaning event should follow the model
+y(t) = A*exp(-(t-t_0)/tau) + C, where
+
+y(t) = detected photon counts (events)
+A, C, t_0 = parameters to estimate (in frames or seconds)
 
 
 # Input data (FOR TRAINING/TESTING):
@@ -60,15 +64,18 @@ Once validated, the actual program will operate on:
 
 
 # Task (and physical nuances)
-1. (for testing stage) only 6660 eV window is being analyzed
-a) Although the element emits in 6660 eV - it may variate left-right (as well as have a broadth because of Doppler effect)
-2. Determine start and finish frames of discharges in 1 shot (may be few, may be none)
-a) Usually first 3 frames of a discharge is enough:
-ii. it is a minimum to dopasowanie do wzorku
-iii. usually, after more then 3 frames background noise takes dominance
-b) Discharge "starts" when 6660 eV widmo experience high jump (which means the inpurity got injected)
-c) usually the second frame after the beginning of injection is good for starting approximation (as the very first one might not be the max - as the injection could not have finished yet then - so the max point (which would not be caught because of the discrete frames measurements) - is actually after the first point)
-i. sure thing, sometimes the very first point might be good - as well as 4 points could be good instead of 3 - it depends on how much does it "fits to" aproximation. It is clearly seeable in the graph - but harder on calculation level
+1. (testing stage) only the 6660 eV window is analyzed.
+	The line may shift slightly and be broadened by Doppler effects, so
+	we use a small energy window around 6660 eV.
+2. Determine start and finish frames of injections in a shot (there may be zero or multiple).
+	a) Typically the first 3 frames of an injection are sufficient for fitting.
+		- This is a practical minimum; beyond ~3 frames background usually
+		  dominates.
+	b) An injection starts when the 6660 eV trace experiences a large jump.
+	c) The second frame after the start is usually a good choice for t_0
+		(the first frame may not capture the peak due to discrete sampling).
+		Depending on the case, 1..4 points may be appropriate — this is
+		configurable and visible in plots.
 3. Fit amount of events (a one frame) to y(t) = A*exp(-(t-t_0)/tau) + C - where
 y(t) - amount of detected photons (Events№)
 C, A, t_0 (both in frames or time-scale) - coefficients which are to detect

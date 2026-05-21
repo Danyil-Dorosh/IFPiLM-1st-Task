@@ -1,7 +1,7 @@
 """Quick exploratory look at unitedc_62_239.txt.
 
-Goal: dla każdej ramki policz sumę Events1 i Events2 w oknie 6660 eV +/- 50 eV
-i zobacz, kiedy są skoki — to nam pokaże, ile jest discharges w tym shocie.
+Goal: for each frame, compute Events1 and Events2 sums in the 6660 eV +/- 50 eV window
+and inspect when jumps occur — this shows how many injections are present in the shot.
 """
 import sys
 from pathlib import Path
@@ -66,7 +66,7 @@ for fn in sorted(frames.keys()):
     records.append((fn, int(Ev1[m1].sum()), int(Ev2[m2].sum())))
 
 import csv
-with open("/home/user/workspace/pha_lib_project/output/window_6660_per_frame.csv", "w", newline="") as f:
+with open("output/window_6660_per_frame.csv", "w", newline="") as f:
     w = csv.writer(f)
     w.writerow(["frame", "events1_window", "events2_window"])
     w.writerows(records)

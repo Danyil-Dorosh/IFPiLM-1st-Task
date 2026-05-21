@@ -1,79 +1,78 @@
-"""Detekcja discharges w przebiegu czasowym.
+"""Injection detection in a time trace.
 
-Discharge w naszych danych = nagły skok liczby fotonów w oknie 6660 eV
-(injekcja zanieczyszczenia), po czym sygnał wykładniczo zanika do tła.
+In our data an injection = sudden jump of photon counts in the chosen
+energy window (impurity injection), followed by an exponential decay
+back to background.
 
-Algorytm (prosty i czytelny — można potem podmienić)
------------------------------------------------------
-1. Estymujemy poziom tła (background) jako medianę całego przebiegu —
-   to odporne na pojedyncze peaki (median nie ucieknie z powodu kilku
-   wystrzałów).
-2. Estymujemy „skalę szumu" jako MAD (median absolute deviation) lub
-   po prostu odchylenie standardowe okolic mediany.
-3. Discharge zaczyna się w pierwszej ramce, gdzie sygnał skacze o
-   `peak_threshold_factor * scale` powyżej tła ORAZ jest większy o co
-   najmniej `min_jump` wartości od ramki poprzedniej.
-4. Discharge kończy się, gdy sygnał wraca do <= `end_threshold_factor*scale`
-   powyżej tła i pozostaje tam co najmniej `min_quiet_frames` ramek.
-5. Łączymy / odrzucamy zbyt krótkie / zbyt blisko siebie discharges.
+Algorithm (simple and readable — can be replaced later)
+------------------------------------------------------
+1. Estimate background level as the median of the trace — robust to spikes.
+2. Estimate noise scale using MAD (median absolute deviation) or similar.
+3. An injection starts at the first frame where the signal exceeds
+    `peak_threshold_factor * scale` above background AND is at least
+    `min_jump` larger than the previous frame.
+4. An injection ends when the signal returns to <= `end_threshold_factor*scale`
+    above background and stays there for at least `min_quiet_frames` frames.
+5. Merge or discard injections that are too short or too close.
 
-Parametry są nastrajalne — domyślne dobrane dla naszego zbioru testowego.
+Parameters are tunable — defaults chosen for our test dataset.
 """
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import List
 import numpy as np
 
-from .model import TimeTrace, Discharge
+try:
+    from .model import TimeTrace, Injection
+except ImportError:  # pragma: no cover
+    from model import TimeTrace, Injection
 
 
 @dataclass
-class DischargeDetectionConfig:
-    """Konfiguracja detekcji discharges."""
+class InjectionDetectionConfig:
+    """Configuration for injection detection."""
     peak_threshold_factor: float = 3.0
-    """Ile razy szumu ponad tło, aby uznać że to peak (start discharge).
-    Domyślnie 3 sigma — typowy próg detekcji w fizyce."""
+    """How many noise units above background to consider a peak.
+    Default 3 sigma — a common detection threshold in physics."""
 
     end_threshold_factor: float = 1.5
-    """Próg powrotu do tła (koniec discharge)."""
+    """Threshold to consider the signal returned to background (end)."""
 
     min_jump: float = 20.0
-    """Minimalny absolutny skok wartości (w jednostkach events) między
-    ramką poprzednią a nową — chroni przed słabymi fluktuacjami."""
+    """Minimum absolute jump in events between frames — avoids weak fluctuations."""
 
     min_quiet_frames: int = 2
-    """Po ilu spokojnych ramkach uznajemy że discharge się skończył."""
+    """Number of consecutive quiet frames to consider the injection finished."""
 
     min_separation_frames: int = 3
-    """Minimalna przerwa między dwoma discharges (jeśli mniej — łączymy)."""
+    """Minimum separation in frames between two injections (otherwise merge)."""
 
     max_frames_per_discharge: int = 25
-    """Maksymalna długość — chroni przed „discharge'em który nigdy się
-    nie kończy" (zwykle to tło wzrasta)."""
+    """Maximum length of an injection (protects against non-ending traces)."""
 
 
 def _robust_background_and_scale(values: np.ndarray) -> tuple[float, float]:
-    """Mediana i MAD — robustne wobec peaków."""
+    """Median and MAD — robust against peaks."""
     bg = float(np.median(values))
     mad = float(np.median(np.abs(values - bg)))
-    # 1.4826 * MAD ≈ sigma dla rozkładu normalnego
+    # 1.4826 * MAD ≈ sigma for a normal distribution
     scale = max(1.4826 * mad, 1.0)
     return bg, scale
 
 
-def detect_discharges(
+def detect_injections(
     trace: TimeTrace,
     line_energy_eV: float,
-    config: DischargeDetectionConfig | None = None,
-) -> List[Discharge]:
-    """Znajdź discharges w przebiegu czasowym.
+    config: InjectionDetectionConfig | None = None,
+) -> List[Injection]:
+    """Find injections in a time trace.
 
     Returns
     -------
-    list of Discharge
-        Posortowane po `start_frame`. Lista może być pusta.
+    list of Injection
+        Sorted by `start_frame`. May return an empty list.
     """
-    cfg = config or DischargeDetectionConfig()
+    cfg = config or InjectionDetectionConfig()
     v = trace.values
     fn = trace.frame_numbers
     if len(v) < 3:
@@ -85,19 +84,20 @@ def detect_discharges(
 
     above = v >= high_thr
 
-    # Wykryj kandydaty na start: ramka above z odpowiednio dużym skokiem względem
-    # poprzedniej i niezbyt blisko poprzedniego discharge.
-    discharges: list[Discharge] = []
+    # Detect start candidates: an above-threshold frame with a sufficiently
+    # large jump relative to the previous frame and not too close to the
+    # previous injection.
+    injections: list[Injection] = []
     i = 0
     n = len(v)
     last_finish_idx = -10**9
-    discharge_no = 0
+    injection_no = 0
 
     while i < n:
         if not above[i]:
             i += 1
             continue
-        # potencjalny start
+        # potential start
         prev = v[i - 1] if i > 0 else bg
         if (v[i] - prev) < cfg.min_jump and i > 0:
             i += 1
@@ -107,8 +107,8 @@ def detect_discharges(
             continue
 
         start_idx = i
-        # znajdź koniec: pierwsze miejsce gdzie sygnał spadł poniżej low_thr
-        # i pozostał taki min_quiet_frames ramek
+        # find finish: first place where signal drops below low_thr and
+        # stays below for min_quiet_frames frames
         j = i
         quiet_count = 0
         while j < n:
@@ -126,9 +126,9 @@ def detect_discharges(
         # peak inside [start, finish]
         peak_idx = start_idx + int(np.argmax(v[start_idx:finish_idx + 1]))
 
-        discharge_no += 1
-        discharges.append(Discharge(
-            discharge_no=discharge_no,
+        injection_no += 1
+        injections.append(Injection(
+            injection_no=injection_no,
             channel_id=trace.channel_id,
             line_energy_eV=line_energy_eV,
             start_frame=int(fn[start_idx]),
@@ -138,4 +138,8 @@ def detect_discharges(
         last_finish_idx = finish_idx
         i = finish_idx + 1
 
-    return discharges
+    return injections
+
+#Wired with initial shot-discharge-injection terminology confusion
+detect_discharges = detect_injections
+DischargeDetectionConfig = InjectionDetectionConfig

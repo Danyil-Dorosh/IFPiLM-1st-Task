@@ -1,7 +1,7 @@
-"""Zapis wyników na dysk.
+"""Save analysis results to disk.
 
-Główny format: Parquet (zachowuje typy, jest szybki, kolumnowy — idealny
-do wyników analitycznych). Dodatkowo opcjonalnie CSV (dla podglądu w Excelu).
+Main format: Parquet (preserves types, fast, columnar — suitable
+for analytical results). Optionally also save CSV for quick inspection.
 """
 from __future__ import annotations
 from pathlib import Path
@@ -15,23 +15,23 @@ def save_results_parquet(
     prefix: str = "results",
     also_csv: bool = False,
 ) -> dict[int, Path]:
-    """Zapisz każdy DataFrame do osobnego pliku parquet.
+    """Write each DataFrame to a separate parquet file.
 
     Parameters
     ----------
     df_by_channel : dict[int, pd.DataFrame]
-        Output z `pipeline.analyze_shot()`.
+        Output from `pipeline.analyze_discharge()`.
     out_dir : path
-        Folder na wyniki (zostanie utworzony jeśli nie istnieje).
+        Directory to write results to (created if missing).
     prefix : str
-        Prefix nazwy pliku, domyślnie "results".
+        File name prefix, default "results".
     also_csv : bool
-        Jeśli True, zapisuj też wersję CSV obok parquet.
+        If True, also write a CSV copy next to the parquet file.
 
     Returns
     -------
     dict[int, Path]
-        Mapowanie channel_id -> ścieżka zapisanego pliku parquet.
+        Mapping channel_id -> path of the written parquet file.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -48,5 +48,5 @@ def save_results_parquet(
 
 
 def load_results_parquet(path: str | Path) -> pd.DataFrame:
-    """Odczyt pojedynczego pliku parquet z wynikami."""
+    """Read a single parquet results file."""
     return pd.read_parquet(path)
