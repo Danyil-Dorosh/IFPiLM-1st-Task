@@ -106,7 +106,7 @@ def load_united_txt(
 
 # ---------- 2) folder with test_<n>.txt ------------------------------------
 
-_TEST_FILE_RE = re.compile(r"test.*?_(\d+).*\.txt$", re.IGNORECASE)
+_TEST_FILE_RE = re.compile(r"_(\d+)\.txt$", re.IGNORECASE)
 
 
 def load_test_folder(
@@ -124,9 +124,12 @@ def load_test_folder(
         2025-04-29 07:52:21.619 (...)   <- timestamp line, ignored
     """
     folder = Path(folder)
-    files = sorted(folder.glob("test_*.txt"))
+    files = sorted(
+        fp for fp in folder.iterdir()
+        if fp.is_file() and _TEST_FILE_RE.search(fp.name)
+    )
     if not files:
-        raise FileNotFoundError(f"No test_<n>.txt files in {folder}")
+        raise FileNotFoundError(f"No frame-suffixed .txt files in {folder}")
 
     frames_data: dict[int, np.ndarray] = {}
     for fp in files:
