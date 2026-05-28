@@ -65,8 +65,8 @@ def fit_injection_with_errors(
             "rss": np.nan,
         }
 
-    end_idx = min(start_idx + n_points, len(fn))
-    n_avail = end_idx - start_idx
+    fit_end_idx = min(start_idx + n_points, len(fn))
+    n_avail = fit_end_idx - start_idx
     if n_avail < 2:
         return {
             "n_points": n_points,
@@ -83,23 +83,31 @@ def fit_injection_with_errors(
             "rss": np.nan,
         }
 
-    t_data = fn[start_idx:end_idx].astype(float)
-    y_data = v[start_idx:end_idx].astype(float)
+    t_fit = fn[start_idx:fit_end_idx].astype(float)
+    y_fit = v[start_idx:fit_end_idx].astype(float)
+
+    try:
+        full_end_idx = int(np.where(fn == int(injection.finish_frame))[0][0]) + 1
+    except Exception:
+        full_end_idx = len(fn)
+    full_end_idx = max(full_end_idx, fit_end_idx)
+    t_eval = fn[start_idx:full_end_idx].astype(float)
+    y_eval = v[start_idx:full_end_idx].astype(float)
 
     c_bg = float(np.median(v))
     def _model(t, A, tau):
         return A * np.exp(-(t - t_0) / tau) + c_bg
 
     p0 = (
-        max(float(y_data[0] - c_bg), 1.0),
+        max(float(y_fit[0] - c_bg), 1.0),
         1.0,
     )
 
     try:
-        popt, pcov = curve_fit(_model, t_data, y_data, p0=p0, maxfev=5000)
+        popt, pcov = curve_fit(_model, t_fit, y_fit, p0=p0, maxfev=5000)
         A, tau = map(float, popt)
         A_err, tau_err = _safe_param_errors(pcov, 2)
-        resid = y_data - _model(t_data, A, tau)
+        resid = y_eval - _model(t_eval, A, tau)
         rss = float(np.sum(resid ** 2))
         return {
             "n_points": n_points,
@@ -172,19 +180,23 @@ def adaptive_fit_injection(
     except Exception:
         return fit_injection(trace, injection, n_points=min_points)
 
+    try:
+        full_end_idx = int(np.where(fn == int(injection.finish_frame))[0][0]) + 1
+    except Exception:
+        full_end_idx = len(fn)
+    full_end_idx = max(full_end_idx, start_idx + min_points)
+    t_eval = fn[start_idx:full_end_idx].astype(float)
+    y_eval = v[start_idx:full_end_idx]
+
     for n in range(min_points, max_points + 1):
         fit = fit_injection(trace, injection, n_points=n)
         if not fit.success:
             last_failure = fit
             continue
 
-        # compute model residuals on the points actually used
-        end_idx = min(start_idx + fit.n_points, len(fn))
-        t_data = fn[start_idx:end_idx].astype(float)
-        y_data = v[start_idx:end_idx]
-        # model value using fit params
-        y_model = fit.A * np.exp(-(t_data - fit.t_0) / fit.tau) + fit.C
-        resid = y_data - y_model
+        # compute model residuals on the full injection span
+        y_model = fit.A * np.exp(-(t_eval - fit.t_0) / fit.tau) + fit.C
+        resid = y_eval - y_model
 
         if metric == "rss":
             score = float(np.sum(resid ** 2))
