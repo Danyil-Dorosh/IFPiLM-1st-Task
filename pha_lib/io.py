@@ -106,7 +106,7 @@ def load_united_txt(
 
 # ---------- 2) folder with test_<n>.txt ------------------------------------
 
-_TEST_FILE_RE = re.compile(r"test.*?_(\d+).*\.txt$", re.IGNORECASE)
+_TEST_FILE_RE = re.compile(r"_(\d+)\.txt$", re.IGNORECASE)
 
 
 def load_test_folder(
@@ -124,9 +124,12 @@ def load_test_folder(
         2025-04-29 07:52:21.619 (...)   <- timestamp line, ignored
     """
     folder = Path(folder)
-    files = sorted(folder.glob("test_*.txt"))
+    files = sorted(
+        fp for fp in folder.iterdir()
+        if fp.is_file() and _TEST_FILE_RE.search(fp.name)
+    )
     if not files:
-        raise FileNotFoundError(f"No test_<n>.txt files in {folder}")
+        raise FileNotFoundError(f"No frame-suffixed .txt files in {folder}")
 
     frames_data: dict[int, np.ndarray] = {}
     for fp in files:
@@ -189,6 +192,18 @@ def _build_shot_from_frame_dict(
     because the input file uses common bins every 10 eV.
     """
     frame_numbers = np.array(sorted(frames_data.keys()), dtype=int)
+
+    def _has_signal(frame: np.ndarray) -> bool:
+        return bool(np.any(frame[:, 1::2] != 0))
+
+    nonzero_mask = np.array([_has_signal(frames_data[int(fn)]) for fn in frame_numbers], dtype=bool)
+    if nonzero_mask.any():
+        first = int(np.argmax(nonzero_mask))
+        last = int(len(nonzero_mask) - np.argmax(nonzero_mask[::-1]))
+        frame_numbers = frame_numbers[first:last]
+    else:
+        raise ValueError(f"All frames in {source} are zero-valued")
+
     sample = frames_data[int(frame_numbers[0])]
     n_bins = sample.shape[0]
 

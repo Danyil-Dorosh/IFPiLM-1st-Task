@@ -28,7 +28,8 @@ else:
     # fallback to library alias (no adaptive behaviour)
     from pha_lib.fit import fit_injection_adaptive  # type: ignore
 
-INPUT = Path("data\\test\\modified\\unitedc_62_239.txt")
+# INPUT = Path("data\\test\\modified txt-s\\unitedc_62_239.txt")
+INPUT = ROOT / "data" / "test"
 OUT = ROOT / "output"
 PLOTS = ROOT / "output" / "plots"
 
@@ -40,7 +41,8 @@ MAX_POINTS = 15
 
 def main():
     print(f"Loading {INPUT.name}...")
-    discharge = io.load_united_txt(INPUT, discharge_id="united_62_239")
+    # discharge = io.load_united_txt(INPUT, discharge_id="united_62_239")
+    discharge = io.load_test_folder(INPUT, discharge_id="test_62_239")
     print(f"  {discharge.meta['n_frames']} frames, {discharge.meta['n_bins']} bins, "
         f"frame_dt = {discharge.frame_dt_s} s\n")
 
