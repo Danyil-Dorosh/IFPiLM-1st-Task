@@ -1,6 +1,6 @@
 # pha_lib — API reference
 
-This document describes the public functions and modules inside the `pha_lib` package. Keep `pha_lib` focused on stable, well-tested library functions; project-level notes and testing data live in `AI/context.md`.
+This document describes the public functions and modules inside the `pha_lib` package. Keep `pha_lib` focused on stable, well-tested library functions; 
 
 Modules and primary responsibilities:
 
@@ -12,27 +12,6 @@ Modules and primary responsibilities:
 - `pha_lib.pipeline` — high-level API: `analyze_discharge` and `analyze_channel` that orchestrate the full workflow and return result `DataFrame`s (one per channel).
 - `pha_lib.export` — output helpers: `save_results_parquet`, `load_results_parquet`.
 - `pha_lib.plotting` — visualization: `plot_timetrace_with_injections`, `plot_injection_fit`.
-
-Quick usage (library-focused):
-
-```python
-from pha_lib import io, pipeline, export
-
-# 1. load a discharge (path can be any supported input)
-discharge = io.load_united_txt("path/to/discharge_united.txt", discharge_id="XP_test")
-
-# 2. analyze the discharge — returns a dict[channel, DataFrame]
-results = pipeline.analyze_discharge(
-    discharge,
-    line_energy_eV=6660.0,
-    half_width_eV=50.0,
-    n_points=3,
-    channels=(1, 2),
-)
-
-# 3. persist results
-export.save_results_parquet(results, out_dir="output", also_csv=False)
-```
 
 Result `DataFrame` schema (per-channel):
 
@@ -46,5 +25,4 @@ Result `DataFrame` schema (per-channel):
 Design notes:
 
 - Keep `pha_lib` modules self-contained and stable.
-- Move dataset-specific descriptions, test fixtures, and demo scripts out of this README and into `AI/context.md` or `scripts/`.
 
