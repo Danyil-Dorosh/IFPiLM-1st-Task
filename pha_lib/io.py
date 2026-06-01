@@ -23,6 +23,7 @@ from typing import Iterable, Optional
 import re
 import numpy as np
 
+#Construction for both running file itself as well as part of te library
 try:
     from .model import Discharge, EnergyChannelData
 except ImportError:  # pragma: no cover
@@ -69,26 +70,31 @@ def load_united_txt(
     current_rows: list[list[float]] = []
 
     def _flush():
+        # Save the rows collected for the current frame before moving on.
         if current_frame is not None and current_rows:
             frames_data[current_frame] = np.asarray(current_rows, dtype=float)
 
     with path.open() as f:
         for raw in f:
             s = raw.strip()
+            # Skip blank lines so only markers, headers, and data rows are handled.
             if not s:
                 continue
             m = _FRAME_MARKER.match(s)
             if m:
+                # A new frame marker means the previous frame is complete.
                 _flush()
                 current_frame = int(m.group(1))
                 current_rows = []
                 continue
+            # Header lines repeat for each frame and do not contain data.
             if s.startswith(_HEADER_PREFIX):
                 continue
             parts = s.split()
             if len(parts) < 4:
                 continue
             try:
+                # Keep only the first four columns: E1, counts1, E2, counts2.
                 current_rows.append([float(p) for p in parts[:4]])
             except ValueError:
                 # trash footer line (timestamp) — ignore
