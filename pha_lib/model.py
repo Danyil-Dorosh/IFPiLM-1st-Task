@@ -28,6 +28,7 @@ class Discharge:
     discharge_id: str
     channels: dict[int, EnergyChannelData]
     frame_dt_s: float = 0.05
+    #TODO: move float = 0.05 to config, or at least to a constant in pipeline.py
     """Duration of a single frame in seconds (typically 50 ms)."""
     meta: dict = field(default_factory=dict)
 
