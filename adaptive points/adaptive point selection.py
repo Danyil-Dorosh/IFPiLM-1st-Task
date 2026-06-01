@@ -140,6 +140,120 @@ def fit_injection_with_errors(
         }
 
 
+def fit_injection_window_with_errors(
+    trace: TimeTrace,
+    injection: Injection,
+    start_frame: int,
+    n_points: int,
+) -> dict:
+    """Fit A and tau for a chosen start frame and point count.
+
+    The fit is run on the first `n_points` points starting at `start_frame + 1`,
+    and RSS is evaluated over the full remaining injection span starting from
+    that same frame.
+    """
+    fn = trace.frame_numbers
+    v = trace.values
+    t_0 = float(start_frame + 1)
+
+    try:
+        start_idx = int(np.where(fn == int(t_0))[0][0])
+    except Exception:
+        return {
+            "start_frame": start_frame,
+            "n_points": n_points,
+            "success": False,
+            "message": f"t_0={int(t_0)} not in trace",
+            "A": np.nan,
+            "A_err": np.nan,
+            "t_0": t_0,
+            "t_0_err": 0.0,
+            "tau": np.nan,
+            "tau_err": np.nan,
+            "C": np.nan,
+            "C_err": np.nan,
+            "rss": np.nan,
+        }
+
+    fit_end_idx = min(start_idx + n_points, len(fn))
+    n_avail = fit_end_idx - start_idx
+    if n_avail < 2:
+        return {
+            "start_frame": start_frame,
+            "n_points": n_points,
+            "success": False,
+            "message": f"too few points (n_avail={n_avail}, need >=2)",
+            "A": np.nan,
+            "A_err": np.nan,
+            "t_0": t_0,
+            "t_0_err": 0.0,
+            "tau": np.nan,
+            "tau_err": np.nan,
+            "C": np.nan,
+            "C_err": np.nan,
+            "rss": np.nan,
+        }
+
+    t_fit = fn[start_idx:fit_end_idx].astype(float)
+    y_fit = v[start_idx:fit_end_idx].astype(float)
+
+    try:
+        full_end_idx = int(np.where(fn == int(injection.finish_frame))[0][0]) + 1
+    except Exception:
+        full_end_idx = len(fn)
+    full_end_idx = max(full_end_idx, fit_end_idx)
+    t_eval = fn[start_idx:full_end_idx].astype(float)
+    y_eval = v[start_idx:full_end_idx].astype(float)
+
+    c_bg = float(np.median(v))
+
+    def _model(t, A, tau):
+        return A * np.exp(-(t - t_0) / tau) + c_bg
+
+    p0 = (
+        max(float(y_fit[0] - c_bg), 1.0),
+        1.0,
+    )
+
+    try:
+        popt, pcov = curve_fit(_model, t_fit, y_fit, p0=p0, maxfev=5000)
+        A, tau = map(float, popt)
+        A_err, tau_err = _safe_param_errors(pcov, 2)
+        resid = y_eval - _model(t_eval, A, tau)
+        rss = float(np.sum(resid ** 2))
+        return {
+            "start_frame": start_frame,
+            "n_points": n_points,
+            "success": True,
+            "message": "ok",
+            "A": A,
+            "A_err": float(A_err),
+            "t_0": t_0,
+            "t_0_err": 0.0,
+            "tau": tau,
+            "tau_err": float(tau_err),
+            "C": c_bg,
+            "C_err": 0.0,
+            "rss": rss,
+        }
+    except Exception as exc:
+        return {
+            "start_frame": start_frame,
+            "n_points": n_points,
+            "success": False,
+            "message": f"fit failed: {type(exc).__name__}: {exc}",
+            "A": np.nan,
+            "A_err": np.nan,
+            "t_0": t_0,
+            "t_0_err": 0.0,
+            "tau": np.nan,
+            "tau_err": np.nan,
+            "C": np.nan,
+            "C_err": np.nan,
+            "rss": np.nan,
+        }
+
+
 def sweep_injection_point_counts(
     trace: TimeTrace,
     injection: Injection,
@@ -151,6 +265,46 @@ def sweep_injection_point_counts(
     for n_points in range(min_points, max_points + 1):
         row = fit_injection_with_errors(trace, injection, n_points=n_points)
         rows.append(row)
+    return rows
+
+
+def sweep_injection_windows(
+    trace: TimeTrace,
+    injection: Injection,
+    min_points: int = 3,
+    max_points: int | None = None,
+    start_point_min: int = 1,
+    start_point_max: int = 3,
+) -> list[dict]:
+    """Fit the injection over a bounded set of start points and point counts."""
+    rows: list[dict] = []
+    if max_points is None:
+        max_points = max(2, int(injection.finish_frame - injection.start_frame))
+
+    start_point_min = max(1, int(start_point_min))
+    start_point_max = max(start_point_min, int(start_point_max))
+    start_max = int(injection.finish_frame) - min_points
+    if start_max < int(injection.start_frame):
+        return rows
+
+    for start_point in range(start_point_min, start_point_max + 1):
+        start_frame = int(injection.start_frame + start_point - 1)
+        if start_frame > start_max:
+            continue
+
+        remaining = int(injection.finish_frame - start_frame)
+        if remaining < min_points:
+            continue
+        upper = min(max_points, remaining)
+        for n_points in range(min_points, upper + 1):
+            row = fit_injection_window_with_errors(
+                trace,
+                injection,
+                start_frame=start_frame,
+                n_points=n_points,
+            )
+            row["start_point"] = start_point
+            rows.append(row)
     return rows
 
 
