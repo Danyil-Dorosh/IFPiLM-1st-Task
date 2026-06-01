@@ -18,6 +18,7 @@ def integrate_energy_window(
     channel: EnergyChannelData,
     center_eV: float,
     half_width_eV: float = 60.0,
+    #TODO: move default half_width_eV to a constant in pipeline.py (or somewhere else)
 ) -> TimeTrace:
     """Build a TimeTrace from one channel's spectra — simple sum in an energy window.
 

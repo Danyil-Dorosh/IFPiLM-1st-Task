@@ -5,13 +5,12 @@ for analytical results). Optionally also save CSV for quick inspection.
 """
 from __future__ import annotations
 from pathlib import Path
-from typing import Optional
 import pandas as pd
 
 
 def save_results_parquet(
     df_by_channel: dict[int, pd.DataFrame],
-    out_dir: str | Path,
+    out_dir: str | Path | None = None,
     prefix: str = "results",
     also_csv: bool = False,
 ) -> dict[int, Path]:
@@ -21,8 +20,9 @@ def save_results_parquet(
     ----------
     df_by_channel : dict[int, pd.DataFrame]
         Output from `pipeline.analyze_discharge()`.
-    out_dir : path
-        Directory to write results to (created if missing).
+    out_dir : path, optional
+        Directory to write results to (created if missing). If not provided,
+        defaults to ``pha_lib/output``.
     prefix : str
         File name prefix, default "results".
     also_csv : bool
@@ -33,6 +33,9 @@ def save_results_parquet(
     dict[int, Path]
         Mapping channel_id -> path of the written parquet file.
     """
+    if out_dir is None:
+        out_dir = Path(__file__).resolve().parent / "output"
+
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 

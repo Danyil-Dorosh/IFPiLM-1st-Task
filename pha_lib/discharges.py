@@ -16,6 +16,8 @@ Algorithm (simple and readable — can be replaced later)
 5. Merge or discard injections that are too short or too close.
 
 Parameters are tunable — defaults chosen for our test dataset.
+
+#TODO: add that it firstly cts the data so we ahve no zeros
 """
 from __future__ import annotations
 from dataclasses import dataclass
@@ -50,6 +52,7 @@ class InjectionDetectionConfig:
     max_frames_per_discharge: int = 17
     """Maximum length of an injection (protects against non-ending traces)."""
 
+    #TODO: move all constraints above to a config file or at least to constants in pipeline.py
 
 def _robust_background_and_scale(values: np.ndarray) -> tuple[float, float]:
     """Median and MAD — robust against peaks."""
@@ -69,7 +72,7 @@ def detect_injections(
 
     Returns
     -------
-    list of Injection
+    list of Injection-s
         Sorted by `start_frame`. May return an empty list.
     """
     cfg = config or InjectionDetectionConfig()

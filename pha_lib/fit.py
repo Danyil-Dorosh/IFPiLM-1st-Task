@@ -5,6 +5,8 @@ Convention
 - `t_0` is an INPUT to the fit (always = start_frame + 1 — the second
     point of the burst and the first point used in fitting). It is not a free
     parameter.
+    #HACK first fitting frame is HARD start_frame+1
+    
 - `C` is an INPUT to the fit (median of the whole trace = background).
     It is not a free parameter.
 - Free parameters: A, tau. We fit 2 unknowns on >=2 points using least-squares.
@@ -26,11 +28,11 @@ def exp_decay_model(t, A, t_0, tau, C):
     """y(t) = A * exp(-(t - t_0)/tau) + C — full model (for plotting)."""
     return A * np.exp(-(t - t_0) / tau) + C
 
-
 def fit_injection(
     trace: TimeTrace,
     injection: Injection,
-    n_points: int = 3,
+    n_points: int = 4,
+    #TODO: move default n_points to a constant in pipeline.py (or somewhere else)
 ) -> FitResult:
     """Fit an exponential for a single injection.
 
@@ -48,6 +50,7 @@ def fit_injection(
 
     # 1. t_0 = second point of the burst = first point used for fitting
     t_0 = float(injection.start_frame + 1)
+    #HACK first fitting frame is HARD start_frame+1
 
     # 2. C = median of the whole trace (background)
     C_bg = float(np.median(v))
@@ -62,12 +65,20 @@ def fit_injection(
         )
 
     # 4. Select n_points starting from t_0 (inclusive)
-    end_idx = min(start_idx + n_points, len(fn))
+    requested_end_idx = start_idx + n_points
+    if requested_end_idx > len(fn):
+        print(
+            f"fit_injection: requested end index {requested_end_idx} exceeds len(fn)={len(fn)}; "
+            f"clipping to {len(fn)}"
+        )
+    end_idx = min(requested_end_idx, len(fn))
+    
     n_avail = end_idx - start_idx
-    if n_avail < 2:
+    if n_avail < 4:
+        #TODO: make 4 limit a constrain at the top of the file, or at least a constant in pipeline.py
         return FitResult(
             A=np.nan, t_0=t_0, tau=np.nan, C=C_bg, n_points=n_avail,
-            success=False, message=f"too few points (n_avail={n_avail}, need >=2)",
+            success=False, message=f"too few points (n_avail={n_avail}, need >=4)",
         )
 
     t_data = fn[start_idx:end_idx].astype(float)

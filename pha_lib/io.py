@@ -134,11 +134,14 @@ def load_test_folder(
         fp for fp in folder.iterdir()
         if fp.is_file() and _TEST_FILE_RE.search(fp.name)
     )
+    # The loader expects one file per frame; fail early if the folder has no matches.
     if not files:
         raise FileNotFoundError(f"No frame-suffixed .txt files in {folder}")
 
+    # Build a frame->array mapping from the individual text files.
     frames_data: dict[int, np.ndarray] = {}
     for fp in files:
+        # Extract the frame number from the filename suffix.
         m = _TEST_FILE_RE.search(fp.name)
         if not m:
             continue
@@ -147,9 +150,11 @@ def load_test_folder(
         with fp.open() as f:
             for raw in f:
                 s = raw.strip()
+                # Skip the column header and any blank lines.
                 if not s or s.startswith("Channel"):
                     continue
                 parts = s.split()
+                # Data rows should contain at least idx + one full channel pair.
                 if len(parts) < 5:
                     continue
                 try:
@@ -158,10 +163,13 @@ def load_test_folder(
                     rows.append([float(parts[1]), float(parts[2]),
                                  float(parts[3]), float(parts[4])])
                 except ValueError:
+                    # Ignore timestamp/footer lines or any malformed row.
                     continue
+        # Keep only frames that actually contained parsable data rows.
         if rows:
             frames_data[frame_no] = np.asarray(rows, dtype=float)
 
+    # Reuse the shared conversion logic so both loaders produce the same Discharge shape.
     return _build_shot_from_frame_dict(
         frames_data, discharge_id=discharge_id, channels=channels,
         frame_dt_s=frame_dt_s, source=str(folder),
@@ -197,11 +205,14 @@ def _build_shot_from_frame_dict(
     We assume the energy axis is the same for all frames (and channels),
     because the input file uses common bins every 10 eV.
     """
+    # Work in frame-number order so the output spectra follow the acquisition order.
     frame_numbers = np.array(sorted(frames_data.keys()), dtype=int)
 
     def _has_signal(frame: np.ndarray) -> bool:
+        # Columns 1 and 3 are the count columns; nonzero values mean the frame is useful.
         return bool(np.any(frame[:, 1::2] != 0))
 
+    # Trim away leading and trailing all-zero frames, but keep any real frames in the middle.
     nonzero_mask = np.array([_has_signal(frames_data[int(fn)]) for fn in frame_numbers], dtype=bool)
     if nonzero_mask.any():
         first = int(np.argmax(nonzero_mask))
@@ -210,10 +221,11 @@ def _build_shot_from_frame_dict(
     else:
         raise ValueError(f"All frames in {source} are zero-valued")
 
+    # Use the first remaining frame as the reference shape and energy axis.
     sample = frames_data[int(frame_numbers[0])]
     n_bins = sample.shape[0]
 
-    # Sanity check: all frames same n_bins
+    # Sanity check: every retained frame must have the same number of bins.
     for fn in frame_numbers:
         if frames_data[int(fn)].shape[0] != n_bins:
             raise ValueError(
@@ -221,12 +233,13 @@ def _build_shot_from_frame_dict(
                 f"expected {n_bins} (matching frame {frame_numbers[0]})."
             )
 
-    # Energy is the same in column 0 and column 2 (in our files)
+    # The energy axis is shared by both channels, so we only need one copy.
     energy_eV = sample[:, 0].copy()
 
+    # Build one EnergyChannelData object per requested channel.
     channels_data: dict[int, EnergyChannelData] = {}
     for ch in channels:
-        # column layout: [E1, Ev1, E2, Ev2]
+        # Column layout: [E1, Ev1, E2, Ev2]. Map each channel to its count column.
         if ch == 1:
             counts_col = 1
         elif ch == 2:
@@ -237,6 +250,7 @@ def _build_shot_from_frame_dict(
                 f"Currently only channels 1 and 2 are supported "
                 f"(extend _build_shot_from_frame_dict for more)."
             )
+        # Allocate the full spectra array once, then fill one row per frame.
         spectra = np.empty((len(frame_numbers), n_bins), dtype=float)
         for i, fn in enumerate(frame_numbers):
             spectra[i] = frames_data[int(fn)][:, counts_col]
@@ -247,6 +261,7 @@ def _build_shot_from_frame_dict(
             spectra=spectra,
         )
 
+    # Package the parsed frames into the library's canonical Discharge object.
     return Discharge(
         discharge_id=discharge_id,
         channels=channels_data,
