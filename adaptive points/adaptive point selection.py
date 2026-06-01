@@ -14,10 +14,31 @@ try:
     # when run from project scripts the package is on sys.path
     from pha_lib.model import TimeTrace, Injection, FitResult
     from pha_lib.fit import fit_injection
+    from pha_lib.discharges import (
+        detect_injections as _base_detect_injections,
+        InjectionDetectionConfig,
+    )
 except Exception:
     # fallback to local imports if module path differs
     from model import TimeTrace, Injection, FitResult  # type: ignore
     from fit import fit_injection  # type: ignore
+    from discharges import (  # type: ignore
+        detect_injections as _base_detect_injections,
+        InjectionDetectionConfig,
+    )
+
+
+def detect_injections_adaptive(
+    trace: TimeTrace,
+    line_energy_eV: float,
+    config: InjectionDetectionConfig | None = None,
+) -> list[Injection]:
+    """Adaptive-points detection entrypoint.
+
+    This currently delegates to the shared detector implementation so callers
+    can depend on the adaptive-points module path for detection.
+    """
+    return _base_detect_injections(trace, line_energy_eV=line_energy_eV, config=config)
 
 
 def _safe_param_errors(cov: np.ndarray | None, size: int) -> np.ndarray:

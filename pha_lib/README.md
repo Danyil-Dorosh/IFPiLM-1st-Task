@@ -26,3 +26,7 @@ Design notes:
 
 - Keep `pha_lib` modules self-contained and stable.
 
+TODO: maybe to move plotting out of pha_lib, as well as pipeline (or renaming plotting specifiaclaly for pha lib pipeline)
+
+
+even when apppling nw things - firstly i write it in other fiels - and only at the very end, after thorough testing and design end i add it to pha_lib - this one is the core of the library and hoeprfully must stay very stable

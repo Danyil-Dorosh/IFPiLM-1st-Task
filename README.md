@@ -22,3 +22,6 @@ The top-level README only gives general orientation. Each major folder should do
 - Use folder-level READMEs for implementation details, conventions, and local usage notes.
 - Treat `pha_lib/` as the primary reusable codebase.
 - Keep exploratory work, temporary analysis, and dataset-specific notes outside `pha_lib/` when possible.
+
+
+philosophy that i try using as much notebooks as possible cause they much more way flexible then python+images in some dirs
