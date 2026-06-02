@@ -1,1 +1,4 @@
-weldenstein_data/
+*
+!.gitignore
+!test/
+!test/**
