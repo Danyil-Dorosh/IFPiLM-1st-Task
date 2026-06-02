@@ -16,8 +16,6 @@ Algorithm (simple and readable — can be replaced later)
 5. Merge or discard injections that are too short or too close.
 
 Parameters are tunable — defaults chosen for our test dataset.
-
-#TODO: add that it firstly cts the data so we ahve no zeros
 """
 from __future__ import annotations
 from dataclasses import dataclass
@@ -25,31 +23,36 @@ from typing import List
 import numpy as np
 
 try:
+    from .config import InjectionDetectionConfig as _BaseInjectionDetectionConfig
     from .model import TimeTrace, Injection
 except ImportError:  # pragma: no cover
+    from config import InjectionDetectionConfig as _BaseInjectionDetectionConfig
     from model import TimeTrace, Injection
+
+
+_DEFAULT_DETECTION_CONFIG = _BaseInjectionDetectionConfig()
 
 
 @dataclass
 class InjectionDetectionConfig:
     """Configuration for injection detection."""
-    threshold_factor: float = 3.0
+    threshold_factor: float = _DEFAULT_DETECTION_CONFIG.threshold_factor
     """Noise units above background to consider the detection threshold.
     The same threshold is used both for detecting a peak (start) and for
     considering the signal returned to background (end). Using a single
     threshold removes the previous high/low separation and simplifies
     tuning."""
 
-    min_jump: float = 20.0
+    min_jump: float = _DEFAULT_DETECTION_CONFIG.min_jump
     """Minimum absolute jump in events between frames — avoids weak fluctuations."""
 
-    min_quiet_frames: int = 2
+    min_quiet_frames: int = _DEFAULT_DETECTION_CONFIG.min_quiet_frames
     """Number of consecutive quiet frames to consider the injection finished."""
 
-    min_separation_frames: int = 3
+    min_separation_frames: int = _DEFAULT_DETECTION_CONFIG.min_separation_frames
     """Minimum separation in frames between two injections (otherwise merge)."""
 
-    max_frames_per_discharge: int = 17
+    max_frames_per_discharge: int = _DEFAULT_DETECTION_CONFIG.max_frames_per_discharge
     """Maximum length of an injection (protects against non-ending traces)."""
 
     #TODO: move all constraints above to a config file or at least to constants in pipeline.py
