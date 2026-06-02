@@ -8,6 +8,7 @@ Modules and primary responsibilities:
 - `pha_lib.io` — input routines: `load_united_txt`, `load_test_folder`, and placeholders for `.pha` readers. These functions return `Discharge` objects.
 - `pha_lib.timetrace` — time-trace helpers: `integrate_energy_window` and small utilities that compute per-frame counts for a given energy window.
 - `pha_lib.discharges` — injection detection: `detect_injections` and `InjectionDetectionConfig` (returns `list[Injection]`).
+- `pha_lib.config` — shared configuration objects: `InjectionDetectionConfig` and backward-compatible alias `DischargeDetectionConfig`.
 - `pha_lib.fit` — fitting primitives: `fit_injection` which fits the exponential decay model and returns `FitResult`.
 - `pha_lib.pipeline` — high-level API: `analyze_discharge` and `analyze_channel` that orchestrate the full workflow and return result `DataFrame`s (one per channel).
 - `pha_lib.export` — output helpers: `save_results_parquet`, `load_results_parquet`.
