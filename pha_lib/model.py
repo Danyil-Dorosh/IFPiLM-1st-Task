@@ -8,7 +8,12 @@ import numpy as np
 
 # Bump this when the Discharge structure or field meaning changes,
 # so cached objects can be checked for compatibility quickly.
-DISCHARGE_SCHEMA_VERSION = 1
+# v2: added optional runtime `injections` field (filled after detection).
+DISCHARGE_SCHEMA_VERSION = 2
+
+# Bump this when the Injection structure OR the detection algorithm changes,
+# so cached injections can be checked for compatibility independently of Discharge.
+INJECTION_SCHEMA_VERSION = 1
 
 
 @dataclass
@@ -44,6 +49,17 @@ class Discharge:
     # Structure version of this object; compare against DISCHARGE_SCHEMA_VERSION
     # to detect caches built by an older/different code layout.
     schema_version: int = DISCHARGE_SCHEMA_VERSION
+    # Detected injections for this discharge. Filled in memory after detection
+    # (or attached when loading a separate injections cache). May be None when
+    # detection has not run yet. `compare=False` keeps it out of equality checks.
+    injections: Optional[list["Injection"]] = field(default=None, compare=False)
+
+    def __setstate__(self, state: dict) -> None:
+        # Backward compat: pickles cached under schema_version 1 have no
+        # 'injections' key. Ensure the attribute exists after unpickling so
+        # callers can always read `discharge.injections` safely.
+        state.setdefault("injections", None)
+        self.__dict__.update(state)
 
 
 @dataclass
@@ -64,6 +80,11 @@ class Injection:
     start_frame: int
     finish_frame: int
     peak_frame: int
+    # When this injection was detected (useful for cache provenance/debugging).
+    created_at: datetime = field(default_factory=datetime.now)
+    # Structure/algorithm version; compare against INJECTION_SCHEMA_VERSION
+    # to detect injections produced by an older detection algorithm.
+    schema_version: int = INJECTION_SCHEMA_VERSION
 
 
 @dataclass
