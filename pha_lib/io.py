@@ -116,6 +116,7 @@ _TEST_FILE_RE = re.compile(r"_(\d+)\.txt$", re.IGNORECASE)
 
 
 def load_test_folder(
+    #TODO: change name to "load_discharge_folder" 
     folder: str | Path,
     discharge_id: str = "unknown",
     channels: Iterable[int] = DEFAULT_CHANNELS,

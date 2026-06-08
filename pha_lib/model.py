@@ -1,8 +1,14 @@
 """Data classes — physical objects used by the library."""
 from __future__ import annotations
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Optional
 import numpy as np
+
+
+# Bump this when the Discharge structure or field meaning changes,
+# so cached objects can be checked for compatibility quickly.
+DISCHARGE_SCHEMA_VERSION = 1
 
 
 @dataclass
@@ -22,15 +28,22 @@ class EnergyChannelData:
         return self.spectra.shape[1]
 
 
+#TODO
+DISTCHARGE_FRAME_DT_S_INITVAL=0.05
 @dataclass
 class Discharge:
     """Single experimental discharge — collection of channels + metadata."""
     discharge_id: str
     channels: dict[int, EnergyChannelData]
-    frame_dt_s: float = 0.05
+    frame_dt_s: float = DISTCHARGE_FRAME_DT_S_INITVAL
     #TODO: move float = 0.05 to config, or at least to a constant in pipeline.py
     """Duration of a single frame in seconds (typically 50 ms)."""
     meta: dict = field(default_factory=dict)
+    # When this object was created (useful for cache provenance/debugging).
+    created_at: datetime = field(default_factory=datetime.now)
+    # Structure version of this object; compare against DISCHARGE_SCHEMA_VERSION
+    # to detect caches built by an older/different code layout.
+    schema_version: int = DISCHARGE_SCHEMA_VERSION
 
 
 @dataclass
