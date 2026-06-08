@@ -130,6 +130,11 @@ def detect_injections(
         # peak inside [start, finish]
         peak_idx = start_idx + int(np.argmax(v[start_idx:finish_idx + 1]))
 
+        # Length in frames, inclusive of both endpoints. Injections shorter
+        # than 4 frames are flagged as not-true (likely false turbulence).
+        length_frames = int(fn[finish_idx]) - int(fn[start_idx]) + 1
+        is_true = length_frames >= 4
+
         injection_no += 1
         injections.append(Injection(
             injection_no=injection_no,
@@ -138,6 +143,7 @@ def detect_injections(
             start_frame=int(fn[start_idx]),
             finish_frame=int(fn[finish_idx]),
             peak_frame=int(fn[peak_idx]),
+            is_true_injection=is_true,
         ))
         last_finish_idx = finish_idx
         i = finish_idx + 1
