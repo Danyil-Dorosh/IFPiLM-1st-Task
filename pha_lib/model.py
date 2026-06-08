@@ -13,7 +13,8 @@ DISCHARGE_SCHEMA_VERSION = 2
 
 # Bump this when the Injection structure OR the detection algorithm changes,
 # so cached injections can be checked for compatibility independently of Discharge.
-INJECTION_SCHEMA_VERSION = 1
+# v2: added `is_true_injection` flag (genuine injection vs. false turbulence).
+INJECTION_SCHEMA_VERSION = 2
 
 
 @dataclass
@@ -80,6 +81,10 @@ class Injection:
     start_frame: int
     finish_frame: int
     peak_frame: int
+    # True  -> a genuine injection we want to analyze.
+    # False -> detected but rejected (e.g. a false turbulence that mimics an
+    #          injection physically but is not the event we work on).
+    is_true_injection: bool = True
     # When this injection was detected (useful for cache provenance/debugging).
     created_at: datetime = field(default_factory=datetime.now)
     # Structure/algorithm version; compare against INJECTION_SCHEMA_VERSION
