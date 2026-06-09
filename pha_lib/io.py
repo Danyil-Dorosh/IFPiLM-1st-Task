@@ -45,6 +45,7 @@ def load_united_txt(
     discharge_id: str = "unknown",
     channels: Iterable[int] = DEFAULT_CHANNELS,
     frame_dt_s: float = 0.05,
+    min_frame_counts: int = 2,
 ) -> Discharge:
     """Load the unified training file containing multiple frames.
 
@@ -107,6 +108,7 @@ def load_united_txt(
     return _build_shot_from_frame_dict(
         frames_data, discharge_id=discharge_id, channels=channels,
         frame_dt_s=frame_dt_s, source=str(path),
+        min_frame_counts=min_frame_counts,
     )
 
 
@@ -121,6 +123,7 @@ def load_test_folder(
     discharge_id: str = "unknown",
     channels: Iterable[int] = DEFAULT_CHANNELS,
     frame_dt_s: float = 0.05,
+    min_frame_counts: int = 2,
 ) -> Discharge:
     """Load a folder with `test_<frame_no>.txt` files (9 columns, original format).
 
@@ -174,6 +177,7 @@ def load_test_folder(
     return _build_shot_from_frame_dict(
         frames_data, discharge_id=discharge_id, channels=channels,
         frame_dt_s=frame_dt_s, source=str(folder),
+        min_frame_counts=min_frame_counts,
     )
 
 
@@ -200,18 +204,26 @@ def _build_shot_from_frame_dict(
     channels: Iterable[int],
     frame_dt_s: float,
     source: str,
+    min_frame_counts: int = 2,
 ) -> Discharge:
     """Shared logic: dict[frame_no -> (n_bins, 4)] -> Discharge.
 
     We assume the energy axis is the same for all frames (and channels),
     because the input file uses common bins every 10 eV.
+
+    `min_frame_counts` controls leading/trailing trim: a frame is treated as
+    "empty" unless its TOTAL counts (summed over both channels and all bins)
+    reach this value. Default 2 drops isolated stray single counts (sum == 1)
+    in the dead tail while preserving real decaying signal (which reaches 2).
     """
     # Work in frame-number order so the output spectra follow the acquisition order.
     frame_numbers = np.array(sorted(frames_data.keys()), dtype=int)
 
     def _has_signal(frame: np.ndarray) -> bool:
-        # Columns 1 and 3 are the count columns; nonzero values mean the frame is useful.
-        return bool(np.any(frame[:, 1::2] != 0))
+        # Columns 1 and 3 are the count columns (both channels). Sum them and
+        # require the per-frame total to reach the threshold, so a lone stray
+        # count (total < min_frame_counts) does not keep an otherwise-dead frame.
+        return bool(frame[:, 1::2].sum() >= min_frame_counts)
 
     # Trim away leading and trailing all-zero frames, but keep any real frames in the middle.
     nonzero_mask = np.array([_has_signal(frames_data[int(fn)]) for fn in frame_numbers], dtype=bool)
