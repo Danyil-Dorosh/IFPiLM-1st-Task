@@ -61,7 +61,7 @@ def _robust_background_and_scale(values: np.ndarray) -> tuple[float, float]:
     """Median and MAD — robust against peaks."""
     bg = float(np.median(values))
     mad = float(np.median(np.abs(values - bg)))
-    # 1.4826 * MAD ≈ sigma for a normal distribution
+    # 1.4826 * MAD ≈ sigma for a normal 
     scale = max(1.4826 * mad, 1.0)
     return bg, scale
 
